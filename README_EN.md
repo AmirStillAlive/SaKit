@@ -4,7 +4,8 @@ A minimal, offline Base64 encoder and decoder for text and files.
 
 All processing runs entirely in the browser. No data is sent to any external server.
 
-[مستندات فارسی](README.md)
+- Live Demo: https://amirstillalive.github.io/SaKit/
+- [مستندات فارسی](README.md)
 
 ## Features
 

@@ -4,7 +4,8 @@
 
 این ابزار کاملاً در سمت مرورگر اجرا می‌شود و داده‌های شما به هیچ سروری ارسال نمی‌شوند.
 
-[English Documentation](README_EN.md)
+- مشاهده نسخه آنلاین: https://amirstillalive.github.io/SaKit/
+- [English Documentation](README_EN.md)
 
 ## قابلیت‌ها
 
