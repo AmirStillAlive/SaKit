@@ -1,0 +1,80 @@
+// SaKit Service Worker برای کش کردن کامل و کارکرد ۱۰۰٪ آفلاین
+const CACHE_NAME = 'sakit-v1';
+
+// دارایی‌های اولیه برای کش در زمان نصب
+const PRECACHE_ASSETS = [
+  './',
+  './index.html',
+  './404.html',
+  './favicon.svg',
+  './apple-touch-icon.png',
+  './gen2_tables.bin.z',
+  './manifest.webmanifest'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(PRECACHE_ASSETS);
+    }).then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+
+  if (request.method !== 'GET') return;
+
+  // برای درخواست‌های ناوبری صفحه (Navigation) - Network first با fallback به کش
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          return caches.match('./') || caches.match('./index.html') || caches.match('./404.html');
+        })
+    );
+    return;
+  }
+
+  // برای فایل‌های استاتیک، اسکریپت‌ها، استایل‌ها، فونت‌ها و جدول‌های gen2_tables: Cache first با پر کردن کش
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(request).then((networkResponse) => {
+        if (!networkResponse || (networkResponse.status !== 200 && networkResponse.type !== 'opaque')) {
+          return networkResponse;
+        }
+        const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(request, responseToCache);
+        });
+        return networkResponse;
+      });
+    })
+  );
+});

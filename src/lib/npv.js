@@ -1,0 +1,249 @@
+/**
+ * npv.js: پورت جاوااسکریپت دیکریپت کانفیگ‌های NPV Tunnel (.npvt)
+ *
+ * فرمت:  NPVT1\n<base64>,<base64>,...
+ * رمز:   AES-128-CTR با کلید white-box (جدول‌ها از سورس Go پروژهٔ
+ *         Pantegnos (https://github.com/FrontierTM/Pantegnos، پروانه MIT)
+ *
+ * هیچ‌چیز به سرور نمی‌رود؛ همه‌چیز داخل مرورگر انجام می‌شود.
+ */
+
+export const SHIFT_ORDER = [0, 5, 10, 15, 4, 9, 14, 3, 8, 13, 2, 7, 12, 1, 6, 11];
+
+/** @type {{TY: Uint32Array, MBL: Uint32Array, XT: Uint8Array, TBL: Uint8Array}|null} */
+let TABLES = null;
+
+/** جدول‌ها را از آبجکت JSON (npv_tables.json) می‌سازد. */
+export function setTables(json) {
+  TABLES = {
+    TY: Uint32Array.from(json.tyBoxes.data),
+    MBL: Uint32Array.from(json.mbl.data),
+    XT: Uint8Array.from(json.xorTable.data),
+    TBL: Uint8Array.from(json.tboxesLast.data),
+  };
+  return TABLES;
+}
+
+export function hasTables() {
+  return TABLES !== null;
+}
+
+/** هستهٔ رمز: یک بلاک ۱۶ بایتی را با جدول‌های white-box تبدیل می‌کند. */
+export function core(block) {
+  const { TY, MBL, XT, TBL } = TABLES;
+  let buf = new Uint8Array(16);
+  for (let i = 0; i < 16; i++) buf[i] = block[SHIFT_ORDER[i]];
+
+  for (let i11 = 0; i11 < 4; i11++) {
+    const i13 = i11 * 4;
+    const i14 = i13 + 1, i15 = i13 + 2, i16 = i13 + 3;
+
+    const iC  = TY[i13 * 256 + buf[i13]];
+    const iC2 = TY[i14 * 256 + buf[i14]];
+    const iC3 = TY[i15 * 256 + buf[i15]];
+    const iC4 = TY[i16 * 256 + buf[i16]];
+
+    // --- تبدیل اول: tyBoxes → mix با xorTable ---
+    for (let i17 = 0; i17 < 4; i17++) {
+      const i18 = i11 * 24 + i17 * 6;
+      const i19 = i17 * 8;
+      const i20 = 28 - i19;
+      const i22 = 24 - i19;
+
+      const n1 = (iC  >>> i20) & 15, n2 = (iC2 >>> i20) & 15;
+      const n3 = (iC3 >>> i20) & 15, n4 = (iC4 >>> i20) & 15;
+      const b10 = XT[(i18 * 16 + n1) * 16 + n2];
+      const b11 = XT[(i18 * 16 + n3) * 16 + n4];
+
+      const m1 = (iC  >>> i22) & 15, m2 = (iC2 >>> i22) & 15;
+      const m3 = (iC3 >>> i22) & 15, m4 = (iC4 >>> i22) & 15;
+      const lo = XT[(i18 + 5) * 256 + XT[(i18 + 2) * 256 + m1 * 16 + m2] * 16
+                             + XT[(i18 + 3) * 256 + m3 * 16 + m4]];
+      const hi = XT[(i18 + 4) * 256 + b10 * 16 + b11];
+
+      buf[i13 + i17] = lo | (hi << 4);
+    }
+
+    // --- تبدیل دوم: mbl → mix با xorTable ---
+    const iC5 = MBL[i13 * 256 + buf[i13]];
+    const iC6 = MBL[i14 * 256 + buf[i14]];
+    const iC7 = MBL[i15 * 256 + buf[i15]];
+    const iC8 = MBL[i16 * 256 + buf[i16]];
+
+    for (let i27 = 0; i27 < 4; i27++) {
+      const i28 = i11 * 24 + i27 * 6;
+      const i29 = i27 * 8;
+      const i30 = 28 - i29;
+      const i31 = 24 - i29;
+
+      const n1 = (iC5 >>> i30) & 15, n2 = (iC6 >>> i30) & 15;
+      const n3 = (iC7 >>> i30) & 15, n4 = (iC8 >>> i30) & 15;
+      const a1 = XT[(i28 * 16 + n1) * 16 + n2];
+      const a2 = XT[(i28 * 16 + n3) * 16 + n4];
+      const hi = XT[(i28 + 4) * 256 + a1 * 16 + a2];
+
+      const m1 = (iC5 >>> i31) & 15, m2 = (iC6 >>> i31) & 15;
+      const m3 = (iC7 >>> i31) & 15, m4 = (iC8 >>> i31) & 15;
+      const b1 = XT[(i28 + 2) * 256 + m1 * 16 + m2];
+      const b2 = XT[(i28 + 3) * 256 + m3 * 16 + m4];
+      const lo = XT[(i28 + 5) * 256 + b1 * 16 + b2];
+
+      buf[i13 + i27] = (hi << 4) | lo;
+    }
+  }
+
+  const out = new Uint8Array(16);
+  for (let i = 0; i < 16; i++) out[i] = TBL[i * 256 + buf[SHIFT_ORDER[i]]];
+  return out;
+}
+
+/** AES-CTR با هسته white-box؛ شمارنده big-endian روی ۱۶ بایت. */
+export function ctr(nonce, data) {
+  const counter = Uint8Array.from(nonce);
+  const out = new Uint8Array(data.length);
+  const ks = new Uint8Array(16);
+  for (let off = 0; off < data.length; off += 16) {
+    ks.set(core(counter));
+    for (let i = 15; i >= 0; i--) {
+      counter[i] = (counter[i] + 1) & 0xff;
+      if (counter[i]) break;
+    }
+    const n = Math.min(16, data.length - off);
+    for (let i = 0; i < n; i++) out[off + i] = data[off + i] ^ ks[i];
+  }
+  return out;
+}
+
+/** base64 → bytes (با تحمل whitespace و بدون padding). */
+export function b64decode(s) {
+  const clean = s.replace(/\s+/g, '');
+  if (!clean) return new Uint8Array(0);
+  const padded = clean + '='.repeat((4 - (clean.length % 4)) % 4);
+  const bin = atob(padded);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** یک بلاک base64-شده را دیکریپت می‌کند (nonce ۱۶ بایت ابتدای بلاک). */
+export function decryptBlob(data) {
+  if (data.length < 32) return new Uint8Array(0);
+  return ctr(data.subarray(0, 16), data.subarray(16));
+}
+
+/** متن UTF-8 → رشته */
+export function utf8decode(bytes) {
+  return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+}
+
+/**
+ * نوع فایل را از روی متن حدس می‌زند: npvt، npv یا unknown.
+ * @param {string} text
+ */
+export function detectFormat(text) {
+  const head = text.trimStart().slice(0, 64);
+  if (head.startsWith('NPVS')) return 'npv';
+  if (head.includes('NPVT1') || head.includes('NPVTSUB1')) return 'npvt';
+  const toks = text.split(',').map((t) => t.trim()).filter(Boolean);
+  if (toks.length && toks.every((t) => /^[A-Za-z0-9+/=\s]+$/.test(t))) return 'npvt';
+  return 'unknown';
+}
+
+/**
+ * متن کامل فایل .npvt را می‌گیرد و آرایه‌ای از plaintext برمی‌گرداند.
+ * @param {string} text
+ * @returns {Uint8Array[]}
+ */
+export function decryptFileText(text) {
+  const out = [];
+  for (let tok of text.replace(/NPVTSUB1/g, ',').replace(/NPVT1/g, ',').split(',')) {
+    tok = tok.trim();
+    if (!tok) continue;
+    let blob;
+    try {
+      blob = b64decode(tok);
+    } catch {
+      continue;
+    }
+    if (blob.length < 32) continue;
+    const pt = decryptBlob(blob);
+    if (pt.length) out.push(pt);
+  }
+  return out;
+}
+
+/** تلاش برای JSON خوانا؛ در غیر این صورت همان متن خام. */
+export function pretty(bytes) {
+  const raw = utf8decode(bytes);
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
+}
+
+/**
+ * Build an import link from one decrypted config.
+ *
+ * The .npvt path yields the same v2rayProfile shape as NPVS, so the same
+ * configType rule applies: configType=3 is shadowsocks and must not become
+ * vmess. reality is real encryption, so the tls field must not stay empty.
+ */
+export function toVmessLink(obj) {
+  const p = obj && obj.v2rayProfile;
+  if (!p || !p.server) return null;
+  const remark = String(obj.name || p.remarks || '').trim();
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const sec = String(p.security || '').toLowerCase();
+  const isTls = sec === 'tls' || sec === 'reality';
+  const id = String(p.password || '');
+  const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
+
+  // shadowsocks wants an ss:// link, not vmess
+  if (String(p.configType) === '3') {
+    const method = String(p.method || '').trim();
+    if (!method && !id) return null;
+    const userInfo = method.includes(':') ? method : method ? `${method}:${id}` : id;
+    return `ss://${b64(userInfo)}@${p.server}:${p.serverPort}#${encodeURIComponent(remark)}`;
+  }
+
+  // without a UUID a vmess link is meaningless
+  if (!UUID_RE.test(id)) return null;
+
+  const inner = {
+    v: '2',
+    ps: remark,
+    add: p.server,
+    port: String(p.serverPort),
+    id,
+    aid: '0',
+    scy: 'auto',
+    net: p.network || 'tcp',
+    type: p.headerType || 'none',
+    host: p.host || '',
+    path: p.path || '',
+    // reality is itself TLS; leaving this empty claims "no encryption"
+    tls: isTls ? 'tls' : '',
+    sni: p.sni || '',
+    fp: p.fingerPrint || '',
+    alpn: p.alpn || '',
+  };
+  return 'vmess://' + b64(JSON.stringify(inner));
+}
+
+/** دانلود متن به‌صورت فایل؛ مقاوم در برابر popup-blockerها. */
+export function downloadText(filename, content) {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  // click مستقیم + fallback با MouseEvent برای مرورگرهای سخت‌گیر
+  a.click();
+  a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}

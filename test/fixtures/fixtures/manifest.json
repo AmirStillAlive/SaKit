@@ -1,0 +1,15 @@
+{
+  "passphrase": "sirvdaram",
+  "files": {
+    "sample-appkey.npvs": {
+      "sha256": "749f067e7e2031bdafb3ba204a6e24ade5c59a6fc45d099b56e440d4b40405c6",
+      "needsPassword": false,
+      "configId": "cfg-fixture-0001"
+    },
+    "sample-passphrase.npvs": {
+      "sha256": "e4eaaf97ca8bf24c153d243f1e032901dff1055ba8f97b38ceaa91ab707211ee",
+      "needsPassword": true,
+      "configId": "cfg-fixture-0001"
+    }
+  }
+}
