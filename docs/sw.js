@@ -1,7 +1,6 @@
 // SaKit Service Worker برای کش کردن کامل و کارکرد ۱۰۰٪ آفلاین
 const CACHE_NAME = 'sakit-v1';
 
-// دارایی‌های اولیه برای کش در زمان نصب
 const PRECACHE_ASSETS = [
   './',
   './index.html',
@@ -9,7 +8,9 @@ const PRECACHE_ASSETS = [
   './favicon.svg',
   './apple-touch-icon.png',
   './gen2_tables.bin.z',
-  './manifest.webmanifest'
+  './manifest.webmanifest',
+  './fonts/vazirmatn-arabic.woff2',
+  './fonts/vazirmatn-latin.woff2'
 ];
 
 self.addEventListener('install', (event) => {
