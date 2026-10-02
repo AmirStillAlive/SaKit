@@ -133,8 +133,8 @@ function AppShell() {
     langTitle: isFa ? 'تغییر زبان به انگلیسی / Switch to English' : 'Switch to Persian / تغییر زبان به فارسی',
     github: isFa ? 'گیت‌هاب' : 'GitHub',
     footerText: isFa
-      ? 'جعبه‌ابزار SaKit — پردازش کاملاً امن و ۱۰۰٪ آفلاین در مرورگر شما بدون ارسال داده.'
-      : 'SaKit — 100% Client-Side & Offline Web Toolkit. Zero data transmission.',
+      ? 'جعبه‌ابزار SaKit: پردازش کاملاً امن و ۱۰۰٪ آفلاین در مرورگر شما بدون ارسال داده.'
+      : 'SaKit: 100% Client-Side & Offline Web Toolkit. Zero data transmission.',
     collapseSidebar: isFa ? 'بستن سایدبار' : 'Collapse sidebar',
     expandSidebar: isFa ? 'باز کردن سایدبار' : 'Expand sidebar',
   };
@@ -322,7 +322,10 @@ function AppShell() {
 
         {/* Active Tool Content Area */}
         <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-8">
-          <div className="max-w-4xl mx-auto">
+          <div
+            key={activeTool}
+            className="max-w-4xl mx-auto transition-all duration-300 ease-out animate-in fade-in slide-in-from-bottom-2"
+          >
             {activeTool === 'base64' && <Base64Tool lang={lang} />}
             {activeTool === 'npv' && <NpvTool lang={lang} />}
           </div>

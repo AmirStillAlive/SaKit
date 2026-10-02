@@ -1,4 +1,4 @@
-# SaKit
+# SaKit: Browser-Based Data & Config Toolkit
 
 > Lightweight browser-based tools for encoding, decoding, inspecting, and converting data and configuration files.
 
@@ -10,60 +10,53 @@ SaKit is a client-side web toolkit built for developer productivity, format conv
 
 ---
 
-## 🔒 Privacy & Local Processing Architecture
+## Privacy & Local Processing Architecture
 
-SaKit is engineered around a strict local-first privacy boundary:
-
-1. **Zero User Data Transmission**: Neither input text, uploaded files, nor decrypted configurations are ever transmitted to any remote server or third-party API.
+1. **Zero User Data Transmission**: All primary tools run client-side to the maximum extent possible, and user input data is never sent to a backend for normal processing.
 2. **Base64 Processing**: Handled entirely in-memory using browser-native `TextEncoder`, `TextDecoder`, and standard base64 utilities.
 3. **NPV Config Decryption**: Pure client-side cryptographic computation in Web JavaScript (AES-128 CTR, ChaCha20-Poly1305, and White-Box table lookups).
 4. **Static Asset Caching vs. Data Operations**:
    - The application registers a Service Worker (`sw.js`) and Web App Manifest (`manifest.webmanifest`).
-   - All core scripts, stylesheets, self-hosted Vazirmatn variable fonts, and cipher tables (`gen2_tables.bin.z`) are pre-cached on initial visit in the browser's Cache Storage.
-   - Subsequent visits run completely offline even when disconnected from the internet.
+   - Core application bundles, self-hosted Vazirmatn variable fonts, and compressed binary lookup tables (`gen2_tables.bin.z`) are pre-cached on initial visit.
+   - Any claim of "fully offline" applies strictly to features that the current build can execute without network access.
 
 ---
 
-## 🛠 Available Tools
+## Available Tools
 
-### 1. Base64 (`/base64`)
-A full-featured Base64 encoder and decoder:
+### 1. Base64 Encoder & Decoder (`/base64`)
 - Full Unicode and UTF-8 round-trip support (handles Persian, Arabic, Chinese, and emojis without mangling).
 - Standard Base64 and URL-safe Base64 (`Base64URL`) decoding with automatic missing padding (`=`) repair.
 - File-to-Base64 conversion via native FileReader.
 - Interactive controls: instant copy, `.txt` file export, quick sample loading, and bidirectional text swapping.
 
 ### 2. NPV Config Decryptor (`/npv`)
-Inspects and unpacks configuration archives produced by NPV Tunnel and NapsternetV:
-- Decrypts legacy `.npvt` configuration files.
-- Decrypts `.npvs` Version 1 and Version 5 payloads.
+- Decrypts legacy `.npvt` configuration files with white-box mathematical tables.
+- Decrypts `.npvs` Version 1 and Version 5 payloads using ChaCha20-Poly1305 and A16 KDK key derivation.
 - Parses and generates ready-to-import client proxy links:
   - **VLESS** (with Reality, XTLS Vision, and standard TLS)
   - **VMess** (WebSocket, TCP, HTTP header obfuscation)
   - **Trojan** (TLS, WebSocket, SNI preservation)
-  - **Shadowsocks** (Standard ciphers & Shadowsocks 2022)
-  - **SOCKS5 & HTTP** proxies
+  - **Shadowsocks** (Standard ciphers and Shadowsocks 2022)
+  - **SOCKS5 and HTTP** proxies
 - Multi-file batch decryption, live protocol filtering, and full raw JSON tree inspection.
 
 ---
 
-## 🧭 Tool Navigation & URLs
-
-SaKit supports clean client-side routing on modern web hosts:
+## Tool Navigation & URLs
 
 | Route | Tool |
 | :--- | :--- |
 | `/` or `/base64` | Base64 Encoder / Decoder |
 | `/npv` | NPV Tunnel Config Decryptor |
 
-### Host Behavior
 - **GitHub Pages**: Deployed under the sub-path repository base `/SaKit/`. Fallback navigation is handled by an auto-generated `docs/404.html` SPA redirect.
 - **Cloudflare Pages / Vercel**: Deployed at root domain `/` with native single-page fallback.
 - **In-App Navigation**: The collapsible sidebar and mobile drawer allow instant, state-preserving switching between tools without full page reload.
 
 ---
 
-## 📋 Supported Formats & Compatibility
+## Supported Formats & Compatibility
 
 | Tool | Format / Feature | Status | Notes |
 | :--- | :--- | :--- | :--- |
@@ -72,23 +65,13 @@ SaKit supports clean client-side routing on modern web hosts:
 | **Base64** | Binary File Encoding | Supported | Reads files as Base64 Data URL payloads |
 | **NPV** | `.npvt` | Supported | AES-128 CTR with white-box lookup tables |
 | **NPV** | `.npvs` Version 1 | Supported | JSON envelope; `appKey` and `passphrase` methods |
-| **NPV** | `.npvs` Version 5 | Supported | Gen2 compact envelope; ChaCha20-Poly1305 + A16 KDK derivation |
-| **NPV** | `.npvs` Versions 2–4, >5 | Unsupported | Unknown/undocumented payload structures; UI reports version explicitly |
+| **NPV** | `.npvs` Version 5 | Supported | Gen2 compact envelope; ChaCha20-Poly1305 and A16 KDK derivation |
+| **NPV** | `.npvs` Versions 2 to 4, >5 | Unsupported | Unknown/undocumented payload structures; UI reports version explicitly |
 | **NPV** | `.npvs` Recipient-bound | Unsupported | Bound to private hardware/ECDH keys; cannot be opened with public keys |
 
 ---
 
-## 💻 Usage
-
-### Browser Usage
-1. Open the [Online Demo](https://amirstillalive.github.io/SaKit/).
-2. Select **Base64** or **NPV Config Decryptor** from the navigation sidebar.
-3. Paste text or drag & drop configuration files into the input zone.
-4. Copy the synthesized links or download the resulting text/JSON with one click.
-
----
-
-## 🔧 Local Development
+## Local Development
 
 ### Prerequisites
 - Node.js 18.0.0 or higher
@@ -115,12 +98,10 @@ npm run preview
 
 ---
 
-## 🧪 Testing
-
-SaKit maintains an automated test suite across unit, mathematical parity, and end-to-end browser environments:
+## Testing & Quality Assurance
 
 ```bash
-# Run all unit tests & cryptography parity suites
+# Run all unit tests and cryptography parity suites
 npm test
 
 # Run real browser end-to-end test (via Chrome DevTools Protocol)
@@ -134,72 +115,77 @@ npm run test:e2e
 
 ---
 
-## 🚀 Deployment
+## Deployment
 
 ### GitHub Pages (Default)
 The repository build output targets the `docs/` folder on the `main` branch:
 1. Run `npm run build` (generates `docs/index.html`, assets, and `docs/404.html`).
 2. In GitHub Repository Settings -> Pages, select Source: **Deploy from a branch**, Branch: **main**, Folder: **/docs**.
 
-### Cloudflare Pages & Vercel
-- **Cloudflare Pages**: Set Build command: `npm run build`, Output directory: `docs`. Fully compatible with single-page application routing.
-- **Vercel**: Set Output Directory: `docs`.
+### Cloudflare Pages and Vercel
+- **Cloudflare Pages**: Set Build command `npm run build`, Output directory `docs`. Fully compatible with single-page application routing.
+- **Vercel**: Set Output Directory `docs`.
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 ```text
-SaKit App
- ├── App Shell (Responsive Collapsible Sidebar & Mobile Drawer)
- ├── Ambient Background FX (VibeFarsi Graphite & Cyberpunk Neon Grid)
- ├── Tool Router (SPA Path Routing with Fallback)
- ├── Tools
- │    ├── Base64Tool (UTF-8 Safe Engine)
- │    └── NpvTool (Multi-Format Cipher & Link Synthesis Engine)
- ├── Offline Core (PWA Service Worker + Self-Hosted Vazirmatn Fonts)
- └── Shared UI Components (VibeFarsi Design Tokens & Tailwind CSS v4)
+SaKit
+├── App Shell
+├── Tool Router
+│   └── SPA routing with deployment-compatible fallback
+├── Tools
+│   ├── Base64Tool
+│   │   └── UTF-8 / Unicode-safe encoding and decoding
+│   └── NpvTool
+│       └── Supported NPV configuration decoding and inspection
+├── Shared UI Components
+│   └── Tailwind CSS v4 + RTL-aware styling
+└── Local-first runtime
+    ├── Service Worker / PWA support
+    └── Locally bundled fonts and static assets
 ```
 
----
-
-## 🛡 Security & Privacy Notes
-
-- NPV decryption is provided for security research, configuration backup, and interoperability auditing.
-- Do not commit real credentials, VPN connection passwords, or private configurations to public repositories or issue trackers.
-- All decryption runs in your browser. However, configurations extracted from third-party files route traffic to the servers configured by their creators; verify server hostnames before using them.
+All primary tools execute client-side to the maximum extent possible, and input data is not transmitted to a backend for normal processing.
 
 ---
 
-## ⚖️ Independence & Disclaimer
+## Security & Privacy Notes
 
-SaKit is an independent, open-source educational toolkit. It is **not** affiliated with, endorsed by, or sponsored by NPV Tunnel, NapsternetV, or their respective developers. All references to third-party file extensions and software names are used strictly for format compatibility and interoperability descriptions.
-
----
-
-## 📜 Attribution & Third-Party Notice
-
-- **[FrontierTM/Pantegnos](https://github.com/FrontierTM/Pantegnos)**: Reference research and open-source implementation for NPV white-box lookup structures, KDF derivation, and envelope parsers.
-- **[VibeFarsi](https://vibefarsi.ir)**: Design rules, Graphite dark theme tokens, and typography guidelines.
-- **[Vazirmatn Font](https://github.com/rastikerdar/vazirmatn)** by Saber Rastikerdar: Open Font License (OFL).
-- **[Lucide Icons](https://lucide.dev)**: ISC License.
+- The NPV tool is provided for security research, configuration inspection, and user verification of config files.
+- Avoid placing real passwords, private keys, UUIDs, or sensitive credentials in Issues, Pull Requests, public samples, or public repositories.
+- File and input data processing occurs inside the browser, and the application requires no backend for normal decryption.
+- Using a decoded configuration in another client or service may establish network connections to endpoints defined within that configuration. Verify server addresses and network parameters before connecting.
+- Offline claims apply strictly to features that the current build can execute without network access. For any asset loaded lazily at runtime, this behavior must be documented explicitly.
 
 ---
 
-## 🔄 Migration from npv-decrypt
+## Independence & Disclaimer
 
-The capabilities of the standalone `npv-decrypt` tool have been merged into SaKit as a first-class module (`/npv`). Maintenance and future updates will proceed under the unified SaKit repository.
-
----
-
-## 🗺 Roadmap
-
-- [ ] Additional hash tools (MD5, SHA-256, Keccak).
-- [ ] JSON / YAML / TOML cross-converter with syntax highlighting.
-- [ ] V2Ray / Sing-box config syntax validator.
+- SaKit is an independent, open-source educational toolkit and is not affiliated with, endorsed by, or sponsored by NPV Tunnel, NapsternetV, or their respective developers.
+- References to third-party file extensions and names are used strictly to describe format compatibility and interoperability.
 
 ---
 
-## 📄 License
+## Attribution & Third-Party Notices
 
-SaKit is distributed under the [MIT License](LICENSE).
+- **[FrontierTM/Pantegnos](https://github.com/FrontierTM/Pantegnos)**: Reference research and foundational implementation for NPV white-box lookup structures, KDF derivation, and envelope parsers.
+- **[VibeFarsi](https://vibefarsi.ir/)**: Design reference for RTL UI principles, design system tokens, and Graphite dark theme.
+- **[Vazirmatn](https://github.com/rastikerdar/vazirmatn)** by Saber Rastikerdar: Persian typography font under SIL Open Font License 1.1.
+- **[Lucide](https://lucide.dev/)**: UI iconography under ISC License.
+- Any additional third-party code, asset, or dependency in the final implementation must be documented before release in this section or in a dedicated notices file.
+
+---
+
+## Migration from npv-decrypt
+
+- NPV features have been migrated from the standalone `npv-decrypt` project into SaKit as a first-class module (`/npv`). Ongoing maintenance will proceed under the unified SaKit repository.
+- SaKit serves as the canonical project repository. The legacy repository is retained solely as migration history; once made private, documentation should not link to it as an active public source.
+
+---
+
+## License
+
+SaKit is released under the [MIT License](LICENSE).
+The SaKit license applies strictly to code and materials owned by SaKit; third-party code, fonts, assets, and dependencies remain under their respective independent licenses.

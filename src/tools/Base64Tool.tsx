@@ -53,21 +53,21 @@ export const Base64Tool: React.FC<Base64ToolProps> = ({ lang }) => {
     download: isFa ? 'دانلود' : 'Download',
     chars: isFa ? 'کاراکتر' : 'chars',
     invalid: isFa
-      ? 'ورودی Base64 معتبر نیست. کاراکترهای مجاز: A–Z a–z 0–9 + / ='
-      : 'Invalid Base64 input. Allowed characters: A–Z a–z 0–9 + / =',
-    copied: isFa ? 'در کلیپ‌بورد کپی شد ✓' : 'Copied to clipboard ✓',
-    downloaded: isFa ? 'فایل دانلود شد ✓' : 'File downloaded ✓',
+      ? 'ورودی Base64 معتبر نیست. کاراکترهای مجاز: A-Z a-z 0-9 + / ='
+      : 'Invalid Base64 input. Allowed characters: A-Z a-z 0-9 + / =',
+    copied: isFa ? 'در کلیپ‌بورد کپی شد' : 'Copied to clipboard',
+    downloaded: isFa ? 'فایل دانلود شد' : 'File downloaded',
     cleared: isFa ? 'پاک شد' : 'Cleared',
     empty: isFa ? 'متنی برای کپی یا دانلود وجود ندارد' : 'Nothing to copy or download',
-    sampleText: isFa ? 'سلام دنیا! Hello World 👋' : 'Hello World! سلام دنیا 👋',
+    sampleText: isFa ? 'سلام دنیا! Hello World' : 'Hello World! سلام دنیا',
     h1Title: isFa ? 'کاملاً آفلاین' : 'Fully Offline',
     h1Desc: isFa
       ? 'همه‌چیز در مرورگر شما پردازش می‌شود. هیچ متنی به سرور ارسال نخواهد شد.'
       : 'Everything runs directly in your browser. Nothing is uploaded.',
     h2Title: isFa ? 'پشتیبانی کامل UTF-8' : 'Real UTF-8 Support',
     h2Desc: isFa
-      ? 'حفظ کامل متن‌های فارسی، خطوط چندزبانه، علائم نگارشی و ایموجی‌ها بدون خطا.'
-      : 'Preserves Persian, Arabic, special Unicode characters and emojis perfectly.',
+      ? 'حفظ کامل متن‌های فارسی، خطوط چندزبانه، علائم نگارشی و کاراکترهای خاص بدون خطا.'
+      : 'Preserves Persian, Arabic, special Unicode characters and formatting perfectly.',
     h3Title: isFa ? 'آنی و نامحدود' : 'Instant & Unlimited',
     h3Desc: isFa
       ? 'بدون نیاز به ثبت‌نام یا محدودیت حجم، همراه با قابلیت دانلود و کپی سریع.'
@@ -178,10 +178,6 @@ export const Base64Tool: React.FC<Base64ToolProps> = ({ lang }) => {
     <div className="w-full max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
       {/* Hero Section */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-brand/10 text-brand border border-brand/20 shadow-sm">
-          <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-          <span>{t.badge}</span>
-        </div>
         <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">
           {t.title}
         </h1>

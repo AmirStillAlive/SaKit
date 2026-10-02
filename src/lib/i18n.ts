@@ -89,7 +89,7 @@ export const I18N = {
   fa: {
     langLabel: 'EN',
     langTitle: 'تغییر زبان به انگلیسی / Switch to English',
-    badge: 'کاملاً آفلاین در مرورگر شما — بدون ارسال فایل به هیچ سرور',
+    badge: 'کاملاً آفلاین در مرورگر شما: بدون ارسال فایل به هیچ سرور',
     title: 'رمزگشایی کانفیگ NPV Tunnel',
     subtitle:
       'فایل کانفیگ .npvt یا .npvs نسخهٔ ۱ و ۵ را بگذارید تا به JSON خوانا و لینک آمادهٔ ورود تبدیل شود. رمزگشایی با جدول‌های white-box کاملاً داخل همین صفحه اجرا می‌شود.',
@@ -132,7 +132,7 @@ export const I18N = {
   en: {
     langLabel: 'فا',
     langTitle: 'تغییر زبان به فارسی / Switch to Persian',
-    badge: 'Runs 100% offline in your browser — no files sent to any server',
+    badge: 'Runs 100% offline in your browser: no files sent to any server',
     title: 'NPV Tunnel Config Decryptor',
     subtitle:
       'Drop your .npvt or .npvs (v1 & v5) config files to get readable JSON and ready-to-use client links. Decrypted locally using white-box tables.',
