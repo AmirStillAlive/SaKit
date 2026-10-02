@@ -593,10 +593,12 @@ function allLinksText(result: Result): string {
 function CopyButton({
   value,
   label,
+  copiedLabel = 'کپی شد',
   onCopy,
 }: {
   value: string;
   label: string;
+  copiedLabel?: string;
   onCopy?: () => void;
 }) {
   const [done, setDone] = useState(false);
@@ -618,7 +620,7 @@ function CopyButton({
       aria-label={label}
     >
       {done ? <Check className="text-success" /> : <Copy />}
-      {done ? 'کپی شد' : label}
+      {done ? copiedLabel : label}
     </Button>
   );
 }
@@ -1163,6 +1165,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
                               <CopyButton
                                 value={l.value}
                                 label={isEn ? `Copy ${l.label}` : `کپی ${l.label}`}
+                                copiedLabel={t.copied}
                                 onCopy={() => toast(t.toastLinkCopied(l.label), 'success')}
                               />
                             </div>
