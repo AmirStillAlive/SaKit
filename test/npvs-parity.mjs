@@ -1,11 +1,11 @@
-// تست NPVS در جاوااسکریپت
+// NPVS decryption tests in JavaScript
 //
-// بردارهای KDF از آزمون خود پروژهٔ Pantegnos گرفته شده‌اند، پس پیاده‌سازی
-// جاوااسکریپت باید دقیقا همان کلیدهایی را بسازد که Go می‌سازد.
-// علاوه بر آن یک پاکت واقعی NPVS ساخته می‌شود تا مسیر رمزگشایی از سر تا ته
-// آزموده شود.
+// KDF test vectors are taken from the Pantegnos project test suite,
+// ensuring the JavaScript implementation derives identical keys to Go.
+// Additionally, a synthetic NPVS packet is generated to test the full
+// decryption path end-to-end.
 //
-//   node web/test/npvs-parity.mjs
+//   node test/npvs-parity.mjs
 
 import { readFileSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
@@ -37,22 +37,22 @@ function check(name, got, want) {
 
 const hex = (b) => Buffer.from(b).toString('hex');
 const bytesFromHex = (s) => new Uint8Array(Buffer.from(s, 'hex'));
-// base64url بدون padding، همان چیزی که سرآیند واقعی NPVS استفاده می‌کند
+// base64url without padding as used in NPVS envelope headers
 const b64u = (b) => Buffer.from(b).toString('base64url').replace(/=+$/, '');
 
 setWbTables(JSON.parse(readFileSync(join(repoRoot, 'npvs_tables.json'), 'utf8')));
 
-// --- ۱. بردار KDF از آزمون Go ---------------------------------------------
+// --- 1. KDF vector from Go tests ---------------------------------------------
 
-console.log('custodian KDK (بردار آزمون Go)');
+console.log('custodian KDK (Go test vector)');
 const kdks = await custodianKdks(bytesFromHex('843cc2c901ce91516c38cc6605b92e47'));
-check('دو کلید ساخته شد', kdks.length, 2);
+check('Two keys derived', kdks.length, 2);
 check('kdk[0]', hex(kdks[0]), 'a9c9058dca50d178b64e0318ad5362be8f8d4103dc83ce2bd0ccd7e404584e3d');
 check('kdk[1]', hex(kdks[1]), '438a04b521a5952156441a76bee5d8377a67257ff7e8291b220023614d7933d5');
 
-// --- ۲. ChaCha20-Poly1305 در برابر بردار مرجع ------------------------------
+// --- 2. ChaCha20-Poly1305 against reference vector ------------------------------
 
-console.log('ChaCha20-Poly1305 (بردار مرجع)');
+console.log('ChaCha20-Poly1305 (reference vector)');
 const KEY = Uint8Array.from({ length: 32 }, (_, i) => i);
 const NONCE = bytesFromHex('000000000000004a00000000');
 const AAD = bytesFromHex('50515253c0c1c2c3c4c5c6c7');
@@ -63,29 +63,29 @@ const PT = new TextEncoder().encode(
 
 const sealed = chachaSeal(KEY, NONCE, PT, AAD);
 check(
-  'متن رمزشده',
+  'Ciphertext',
   hex(sealed.subarray(0, PT.length)),
   '6e2e359a2568f98041ba0728dd0d6981e97e7aec1d4360c20a27afccfd9fae0' +
     'bf91b65c5524733ab8f593dabcd62b3571639d624e65152ab8f530c359f0861d' +
     '807ca0dbf500d6a6156a38e088a22b65e52bc514d16ccf806818ce91ab779373' +
     '65af90bbf74a35be6b40b8eedf2785e42874d',
 );
-check('تگ', hex(sealed.subarray(PT.length)), '3179267b0ba71e40a2ad866fce5f8052');
+check('Auth tag', hex(sealed.subarray(PT.length)), '3179267b0ba71e40a2ad866fce5f8052');
 check(
-  'رمزگشایی برمی‌گردد',
+  'Decryption roundtrip',
   new TextDecoder().decode(chachaOpen(KEY, NONCE, sealed, AAD)),
   new TextDecoder().decode(PT),
 );
 
-// --- ۳. نشانه‌ها ----------------------------------------------------------
+// --- 3. Sentinels ----------------------------------------------------------
 
-console.log('نشانه‌های npvs1:');
+console.log('Sentinels npvs1:');
 const tok = Buffer.from('vless://uuid@host:443').toString('base64').replace(/=+$/, '');
-check('رشته مبهم باز شد', decodeSentinels(`پیش npvs1:${tok} پس`), 'پیش vless://uuid@host:443 پس');
-check('توکن خالی دست‌نخورده ماند', decodeSentinels('npvs1:!!!'), 'npvs1:!!!');
-check('توکن نامعتبر دست‌نخورده ماند', decodeSentinels('npvs1:@@@@'), 'npvs1:@@@@');
+check('Obfuscated string decoded', decodeSentinels(`prefix npvs1:${tok} suffix`), 'prefix vless://uuid@host:443 suffix');
+check('Empty token unchanged', decodeSentinels('npvs1:!!!'), 'npvs1:!!!');
+check('Invalid token unchanged', decodeSentinels('npvs1:@@@@'), 'npvs1:@@@@');
 
-// --- ۴. ساخت پاکت واقعی NPVS ---------------------------------------------
+// --- 4. Building synthetic NPVS envelope ---------------------------------------------
 
 async function buildEnvelope({ dek, body, appKey, password = '' }) {
   const salt = bytesFromHex('000102030405060708090a0b0c0d0e0f');
@@ -182,9 +182,9 @@ try { await decryptNpvs(passEnv); } catch (e) {
 }
 check('بدون رمز راهنمایی می‌دهد', threw, true);
 
-// --- ۵. ورودی‌های خراب ---------------------------------------------------
+// --- 5. Malformed inputs ---------------------------------------------------
 
-console.log('ورودی‌های خراب');
+console.log('Malformed inputs');
 for (const [name, bytes, frag] of [
   ['خیلی کوتاه', new Uint8Array([0x4e, 0x50, 0x56, 0x53, 1]), 'کوتاه'],
   ['امضای اشتباه', new Uint8Array(100), 'امضای NPVS'],
@@ -194,12 +194,12 @@ for (const [name, bytes, frag] of [
   check(name, ok, true);
 }
 
-// --- ۶. پاریتی بین پایتون و جاوااسکریپت -----------------------------------
+// --- 6. Parity between Python and JavaScript -----------------------------------
 //
-// یک پاکت ساخته می‌شود، در فایلی موقت نوشته می‌شود، بعد هر دو پیاده‌سازی آن را
-// باز می‌کنند و هش خروجی‌ها باید یکی باشد.
+// An envelope is generated and written to a temporary file, then decrypted
+// by both implementations; output SHA-256 hashes must match byte-for-byte.
 
-console.log('پاریتی پایتون و جاوااسکریپت');
+console.log('Parity: Python vs JavaScript');
 {
   const { writeFileSync, mkdtempSync, rmSync } = await import('node:fs');
   const { execFileSync } = await import('node:child_process');
@@ -222,7 +222,7 @@ console.log('پاریتی پایتون و جاوااسکریپت');
     const jsRes = await decryptNpvs(new Uint8Array(readFileSync(file)));
     const jsHash = createHash('sha256').update(jsRes.plaintext).digest('hex');
 
-    // پایتون متن باز شده را در پوشهٔ دوم می‌نویسد
+    // Python outputs decrypted plaintext to output directory
     const outDir = join(dir, 'out');
     execFileSync('python', [join(repoRoot, 'npvs.py'), file, outDir], {
       encoding: 'utf8',
@@ -231,7 +231,7 @@ console.log('پاریتی پایتون و جاوااسکریپت');
     const pyText = readFileSync(join(outDir, 'sample.txt'), 'utf8');
     const pyHash = createHash('sha256').update(pyText).digest('hex');
 
-    check('هش خروجی دو زبان یکی است', jsHash, pyHash);
+    check('Output hashes match across both implementations', jsHash, pyHash);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

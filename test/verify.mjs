@@ -1,4 +1,4 @@
-// راستی‌آزمایی: خروجی پورت جاوااسکریپت باید بایت‌به‌بایت با پایتون یکی باشد.
+// Verification: JavaScript port output must match Python byte-for-byte.
 import { readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';

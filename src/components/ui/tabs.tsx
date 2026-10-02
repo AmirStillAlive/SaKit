@@ -18,7 +18,7 @@ export interface TabsProps {
   children: React.ReactNode;
 }
 
-/** تب‌های وایب‌فارسی: راست‌چین، پیمایش کیبورد و جابجایی تب با انیمیشن */
+/** Tabs component: keyboard navigation, animated tab transitions, and RTL/LTR support. */
 export function Tabs({ value, defaultValue, onValueChange, variant = "segmented", className, children }: TabsProps) {
   const [internal, setInternal] = React.useState(defaultValue);
   const id = React.useId();

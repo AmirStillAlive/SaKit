@@ -1,16 +1,16 @@
 /**
- * npvs.js: رمزگشایی فرمت NPVS (کانفیگ NPV Tunnel / NapsternetV)
+ * npvs.js: NPVS format decryption (NPV Tunnel / NapsternetV configuration).
  *
- * پورت جاوااسکریپتِ سورس Go پروژهٔ Pantegnos (پروانه MIT):
+ * JavaScript port of Go source from Pantegnos project (MIT License):
  *   internal/modules/impl/npvs.go
  *   internal/modules/impl/npvs_wb.go
  *
- * برخلاف .npvt، فایل NPVS یک پاکت کامل با سرآیند JSON است و محتوایش با
- * ChaCha20-Poly1305 محافظت می‌شود. کلید از دو راه به دست می‌آید:
- *   ۱) appKey جاسازی‌شده در اپ (white-box) -> بدون رمز، کاملا آفلاین
- *   ۲) passphrase با PBKDF2-HMAC-SHA256  -> به رمز عبور نیاز دارد
+ * Unlike .npvt, the NPVS file is a full envelope with a JSON header and
+ * payload protected by ChaCha20-Poly1305. The key is derived via either:
+ *   1) appKey embedded in app (white-box) -> key derivation without password
+ *   2) passphrase with PBKDF2-HMAC-SHA256 -> requires user password
  *
- * هیچ‌چیز به سرور نمی‌رود؛ همه‌چیز داخل مرورگر انجام می‌شود.
+ * Client-side processing with no backend required for normal operations.
  */
 
 const MAGIC = [0x4e, 0x50, 0x56, 0x53]; // "NPVS"
@@ -33,14 +33,14 @@ const SENTINEL_ALPHABET =
 const POLY_P = (1n << 130n) - 5n;
 const LE = new DataView(new ArrayBuffer(8));
 
-/** مجموعه‌ای از بایت‌ها را به عدد صحیح little-endian تبدیل می‌کند. */
+/** Converts a byte array to little-endian BigInt. */
 function bytesToLe(bytes, off = 0, len = 8) {
   let v = 0n;
   for (let i = len - 1; i >= 0; i--) v = (v << 8n) | BigInt(bytes[off + i]);
   return v;
 }
 
-/** خطای NPVS؛ message برای نمایش به کاربر فارسی است. */
+/** NPVS error class. */
 export class NpvsError extends Error {
   constructor(message) {
     super(message);
@@ -48,7 +48,7 @@ export class NpvsError extends Error {
   }
 }
 
-/** این فایل با رمز عبور محافظت شده و رمز در دسترس نیست. */
+/** Thrown when file is passphrase-protected and password is missing or incorrect. */
 export class NeedsPassphrase extends NpvsError {
   constructor(message, creatorMessage = '') {
     super(message);
@@ -121,7 +121,7 @@ function chacha20Xor(key, counter, nonce, data) {
 }
 
 
-/** Poly1305 یک‌بارمصرف با BigInt؛ فقط برای پاکت‌های کوچک کافی است. */
+/** Poly1305 MAC implementation using BigInt for one-time tag computation. */
 function poly1305(msg, key) {
   const r = bytesToLe(key, 0, 16) & 0x0ffffffc0ffffffc0ffffffc0fffffffn;
   const s = bytesToLe(key, 16, 16);
@@ -131,7 +131,7 @@ function poly1305(msg, key) {
     const n = Math.min(16, msg.length - off);
     const chunk = new Uint8Array(17);
     chunk.set(msg.subarray(off, off + n));
-    // بیت 1 در بالای بلاک قرار می‌گیرد، حتی وقتی بلاک آخر ناقص است
+    // Append 1-bit padding to final chunk
     chunk[n] = 1;
     acc = ((acc + bytesToLe(chunk, 0, 17)) * r) % POLY_P;
   }
@@ -145,7 +145,7 @@ function poly1305(msg, key) {
   return tag;
 }
 
-/** a و b باید هم‌طول باشند؛ برای مقایسهٔ ثابت‌زمان تگ. */
+/** Constant-time comparison for authentication tags of equal length. */
 function timingSafeEqual(a, b) {
   if (a.length !== b.length) return false;
   let diff = 0;
@@ -153,7 +153,7 @@ function timingSafeEqual(a, b) {
   return diff === 0;
 }
 
-/** ورودی MAC طبق RFC 8439: aad || pad || ct || pad || طول‌ها. */
+/** Formats Poly1305 MAC input according to RFC 8439: aad || pad || ct || pad || lens. */
 function poly1305Input(aad, ct) {
   const pad = (n) => new Uint8Array((16 - (n % 16)) % 16);
   const mac = new Uint8Array(aad.length + pad(aad.length).length + ct.length + pad(ct.length).length + 16);
@@ -169,7 +169,7 @@ function poly1305Input(aad, ct) {
   return mac;
 }
 
-/** ChaCha20-Poly1305 decrypt؛ اگر تگ نادرست باشد null برمی‌گرداند. */
+/** Decrypts ChaCha20-Poly1305; returns null if tag verification fails. */
 export function chachaOpen(key, nonce, ctAndTag, aad) {
   if (nonce.length !== 12 || ctAndTag.length < 16) return null;
 
@@ -183,7 +183,7 @@ export function chachaOpen(key, nonce, ctAndTag, aad) {
   return chacha20Xor(key, 1, nonce, ct);
 }
 
-/** ChaCha20-Poly1305 encrypt؛ فقط برای ساخت نمونهٔ آزمون. */
+/** Encrypts ChaCha20-Poly1305; used for generating test vectors. */
 export function chachaSeal(key, nonce, plaintext, aad) {
   const otk = chacha20Block(key, 0, nonce, new Uint8Array(64)).subarray(0, 32);
   const ct = chacha20Xor(key, 1, nonce, plaintext);
@@ -197,7 +197,7 @@ export function chachaSeal(key, nonce, plaintext, aad) {
 
 
 // ---------------------------------------------------------------------------
-// هستهٔ white-box برای KDF
+// White-box core for KDF
 // ---------------------------------------------------------------------------
 
 /** @type {{ty: Uint32Array, mbl: Uint32Array, xor: Uint8Array, v1: Uint8Array, v2: Uint8Array}|null} */
@@ -217,7 +217,7 @@ function be32Table(bytes) {
   return out;
 }
 
-/** جدول‌های white-box را یک‌بار آماده می‌کند. */
+/** Initializes white-box lookup tables once. */
 export function setWbTables(json) {
   const t = json.tables;
   WB = {
@@ -249,7 +249,7 @@ function wbMix(grp, k, a, b, c, d) {
   return (wbXor(t + 4, p1, p2) << 4) | wbXor(t + 5, p3, p4);
 }
 
-/** یک بلاک ۱۶ بایتی را با جدول‌های white-box تبدیل می‌کند. */
+/** Transforms a 16-byte block using white-box lookup tables. */
 export function wbBlock(block, tlast) {
   if (!WB) throw new NpvsError('جدول‌های رمز هنوز بارگذاری نشده‌اند.');
   const s = new Uint8Array(16);
@@ -272,7 +272,7 @@ export function wbBlock(block, tlast) {
   return out;
 }
 
-/** white-box AES-CTR؛ همان الگوی نسخهٔ .npvt ولی با جدول نهایی دیگر. */
+/** White-box AES-CTR implementation with final table substitution. */
 export function wbCtr(nonce, data, tlast) {
   const counter = Uint8Array.from(nonce.subarray(0, 16));
   const out = new Uint8Array(data.length);
@@ -288,14 +288,14 @@ export function wbCtr(nonce, data, tlast) {
   return out;
 }
 
-/** SHA-256 به صورت همگام (WebCrypto؛ بدون درخواست شبکه). */
+/** SHA-256 digest using WebCrypto API. */
 export async function sha256Async(bytes) {
   return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
 }
 
 /**
- * کلیدهای مشتق‌شده از white-box برای باز کردن appKey.
- * برای هر دو نسل جدول نهایی یک کلید جدا می‌سازیم.
+ * Derived custodian keys from white-box tables for appKey decryption.
+ * Generates separate keys for both final table generations.
  */
 export async function custodianKdks(salt) {
   if (!WB) throw new NpvsError('جدول‌های رمز هنوز بارگذاری نشده‌اند.');
@@ -315,18 +315,18 @@ export async function custodianKdks(salt) {
 
 
 // ---------------------------------------------------------------------------
-// تجزیهٔ پاکت
+// Envelope parsing
 // ---------------------------------------------------------------------------
 
-/** base64 url-safe را با تحمل نبودن padding رمزگشایی می‌کند. */
+/** Decodes URL-safe base64 with tolerant padding handling. */
 function b64urlDecode(s) {
-  // از base64url به base64 استاندارد تبدیل می‌کنیم
+  // Convert base64url to standard base64
   const std = s.replace(/-/g, '+').replace(/_/g, '/');
   const padded = std + '='.repeat((4 - (std.length % 4)) % 4);
   try {
     return b64ToBytes(padded);
   } catch {
-    // اگر استاندارد نشد، خود url-safe را هم امتحان می‌کنیم
+    // Fallback to direct decoding if padding normalization fails
     try {
       return b64ToBytes(s + '='.repeat((4 - (s.length % 4)) % 4));
     } catch {
@@ -347,7 +347,7 @@ function bytesToHex(b) {
   return s;
 }
 
-/** PBKDF2-HMAC-SHA256 با WebCrypto. */
+/** PBKDF2-HMAC-SHA256 derivation via WebCrypto. */
 async function pbkdf2Sha256(password, salt, iterations, dkLen) {
   const base = await crypto.subtle.importKey(
     'raw',
@@ -365,9 +365,9 @@ async function pbkdf2Sha256(password, salt, iterations, dkLen) {
 }
 
 /**
- * سرآیند NPVS را می‌خواند و اجزای پاکت را برمی‌گرداند.
- * چیدمان: "NPVS" | نسخه (۱) | طول سرآیند (۴ BE) | JSON
- *          | nonce (۱۲) | طول بدنه (۴ BE) | بدنه | امضا (۶۴)
+ * Parses NPVS envelope and extracts packet components.
+ * Layout: "NPVS" | version (1) | header length (4 BE) | JSON
+ *        | nonce (12) | body length (4 BE) | body | signature (64)
  */
 export function parseEnvelope(data) {
   if (data.length < MIN_LEN) {
@@ -426,7 +426,7 @@ function creatorMessage(hdr) {
 }
 
 // ---------------------------------------------------------------------------
-// باز کردن کلید
+// Key unwrapping
 // ---------------------------------------------------------------------------
 
 async function unwrapAppKey(wrap) {
@@ -478,10 +478,10 @@ async function unwrapPassphrase(wrap, password) {
 }
 
 // ---------------------------------------------------------------------------
-// نشانه‌های مبهم‌شده
+// Obfuscated sentinels
 // ---------------------------------------------------------------------------
 
-/** رشته‌های npvs1:<base64> را به متن اصلی برمی‌گرداند. */
+/** Decodes npvs1:<base64> sentinel strings back to original plaintext. */
 export function decodeSentinels(text) {
   let out = '';
   let rest = text;
@@ -496,7 +496,7 @@ export function decodeSentinels(text) {
     const token = rest.slice(0, j);
     rest = rest.slice(j);
 
-    // توکن خالی: همان نشانه را دست‌نخورده برگردان
+    // Return empty token unchanged
     if (!token) {
       out += SENTINEL_PREFIX;
       continue;
@@ -511,13 +511,13 @@ export function decodeSentinels(text) {
 }
 
 // ---------------------------------------------------------------------------
-// نقطهٔ ورود
+// Entry point
 // ---------------------------------------------------------------------------
 
 /**
- * فایل NPVS را باز می‌کند.
- * @param {Uint8Array} data محتوای خام فایل
- * @param {string} [password] برای فایل‌های محافظت‌شده با رمز
+ * Decrypts an NPVS file envelope.
+ * @param {Uint8Array} data Raw file bytes
+ * @param {string} [password] Passphrase for password-protected files
  */
 export async function decryptNpvs(data, password = '') {
   const env = parseEnvelope(data);
@@ -554,7 +554,7 @@ export async function decryptNpvs(data, password = '') {
 
   keys.push(['DEK/CEK', bytesToHex(dek)]);
 
-  // تگ ChaCha در ۱۶ بایت آخر خودِ body است؛ sig یک امضای جداگانه است
+  // ChaCha20 tag is located in the last 16 bytes of body; sig is an outer signature
   const plaintext = chachaOpen(dek, env.nonce, env.body, env.headerRaw);
   if (!plaintext) {
     throw new NpvsError('رمزگشایی محتوا شکست خورد؛ تگ تأیید نادرست است');

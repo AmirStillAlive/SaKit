@@ -1,9 +1,9 @@
-// تست نسخهٔ ۵ (gen2) در جاوااسکریپت + پاریتی با پایتون
+// Tests for version 5 (gen2) in JavaScript + parity with Python
 //
-// بردارها از تست Go پروژهٔ Pantegnos گرفته شده‌اند و fixture هم همان
-// fixture عمومی MIT آن پروژه است.
+// Test vectors are derived from Pantegnos Go tests and the fixture is
+// the project's public MIT sample.
 //
-//   node web/test/npvs-gen2.mjs
+//   node test/npvs-gen2.mjs
 
 import { readFileSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
@@ -42,9 +42,9 @@ const hex = (b) => Buffer.from(b).toString('hex');
 const tables = new Uint8Array(inflateSync(readFileSync(join(repoRoot, 'public', 'gen2_tables.bin.z'))));
 setGen2Tables(tables);
 
-// --- ۱. بردارهای A16 و KDK از تست Go -------------------------------------
+// --- 1. A16 and KDK vectors from Go tests -------------------------------------
 
-console.log('بردارهای A16/KDK نسل ۲ (Pantegnos)');
+console.log('A16/KDK Gen2 vectors (Pantegnos)');
 const A16 = [
   ['b3e16e38809576cbf6aaafd638b6b070', 'ffd6b86349231c14b37f6c929e24cd42'],
   ['000102030405060708090a0b0c0d0e0f', 'f659c73d8c0fa5150e3254dfe0a1106d'],
@@ -64,9 +64,9 @@ check(
   '52043647a29853e765f8efe370fac47155616bfaf653d61b0075a2f183fb6b6b',
 );
 
-// --- ۲. بردارهای whitebox -------------------------------------------------
+// --- 2. White-box vectors -------------------------------------------------
 
-console.log('بردارهای whitebox نسل ۲');
+console.log('White-box Gen2 vectors');
 const block0 = tables.subarray(0, 57344);
 for (const [state, i, args, want] of [
   ['b395af7080aab038f6b66ecb38e176d6', 0, ['b51b86d6', 'e47f474c', 'e71972b9', '304961f0'], '8634d2d3'],
@@ -79,38 +79,38 @@ for (const [state, i, args, want] of [
   );
 }
 
-// --- ۳. باز کردن fixture نسخهٔ ۵ ------------------------------------------
+// --- 3. Decrypting version 5 fixture ------------------------------------------
 
-console.log('پاکت نسخهٔ ۵ (fixture عمومی Pantegnos)');
+console.log('Version 5 envelope (Pantegnos public fixture)');
 const fixturePath = join(repoRoot, 'test', 'fixtures', 'sample-gen2.npvs');
 const fixture = new Uint8Array(readFileSync(fixturePath));
 const env = parseGen2Envelope(fixture);
-check('روش باز کردن appKey است', env.method, 2);
+check('Unwrap method is appKey', env.method, 2);
 
 const res = await decryptNpvsGen2(fixture);
-check('نسخه', res.meta.version, 5);
+check('Version', res.meta.version, 5);
 check('configId', res.meta.configId, '96b7d923079c7bc36d1310bd4d111a79');
-check('تعداد کانفیگ', res.json.length, 1);
-check('نام کانفیگ', res.json[0].name, 'Internet Server VPN / WhatsApp');
-check('یادداشت appKey', res.notes[0].includes('White-Box'), true);
+check('Config count', res.json.length, 1);
+check('Config name', res.json[0].name, 'Internet Server VPN / WhatsApp');
+check('appKey note', res.notes[0].includes('White-Box'), true);
 check(
   'KDK',
   res.keys.find(([k]) => k === 'KDK')[1],
   '52043647a29853e765f8efe370fac47155616bfaf653d61b0075a2f183fb6b6b',
 );
 
-// --- ۴. رمز عبور روی فایل بدون رمز ---------------------------------------
+// --- 4. Malformed and invalid inputs ---------------------------------------
 
-console.log('ورودی‌های خراب نسخهٔ ۵');
+console.log('Malformed inputs (version 5)');
 let threw = 0;
 try {
   await decryptNpvsGen2(new Uint8Array([0x4e, 0x50, 0x56, 0x53, 5]));
 } catch (e) {
   threw = e instanceof NpvsError ? 1 : 2;
 }
-check('فایل خیلی کوتاه رد شد', threw, 1);
+check('Short input rejected', threw, 1);
 
-// --- ۵. پاریتی با پایتون --------------------------------------------------
+// --- 5. Parity with Python --------------------------------------------------
 
 console.log('پاریتی پایتون و جاوااسکریپت (نسخهٔ ۵)');
 {

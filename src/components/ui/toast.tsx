@@ -40,7 +40,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      {/* پیام‌های شناور وایب‌فارسی */}
+      {/* Toast notifications container */}
       {toasts.length > 0 && (
         <div
           role="region"

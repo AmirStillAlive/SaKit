@@ -5,7 +5,7 @@
  * this script works on a JSON dump instead. Decrypt first with:
  *   python tools/dump_configs.py <file.npvs> <password> out.json
  * then run:
- *   node web/test/real-file-check.mjs out.json
+ *   node test/real-file-check.mjs out.json
  */
 
 import { readFileSync } from 'node:fs';
@@ -13,7 +13,7 @@ import { buildProfileLink, readConfigType, hasTls, isReality } from '../src/lib/
 
 const dump = process.argv[2];
 if (!dump) {
-  console.error('usage: node web/test/real-file-check.mjs <configs.json>');
+  console.error('usage: node test/real-file-check.mjs <configs.json>');
   process.exit(2);
 }
 

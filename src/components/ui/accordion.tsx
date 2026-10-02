@@ -12,13 +12,13 @@ export interface AccordionItem {
 
 export interface AccordionProps {
   items: AccordionItem[];
-  /** اجازه باز بودن همزمان چند پنل */
+  /** Allow multiple panels to be open simultaneously */
   multiple?: boolean;
   defaultOpen?: string[];
   className?: string;
 }
 
-/** آکاردئون. شورون در انتهای خط (چپ)؛ انیمیشن ارتفاع با CSS grid، بدون اندازه‌گیری. */
+/** Accordion component with CSS grid height transition and RTL support. */
 export function Accordion({ items, multiple, defaultOpen = [], className }: AccordionProps) {
   const [open, setOpen] = React.useState<string[]>(defaultOpen);
   const toggle = (id: string) =>

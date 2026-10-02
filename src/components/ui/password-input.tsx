@@ -5,15 +5,15 @@ import { cn } from '../../lib/utils';
 
 export interface PasswordInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
-  /** برچسب بالای فیلد. */
+  /** Label displayed above the input. */
   label?: string;
-  /** توضیح کوچک زیر فیلد. */
+  /** Hint text displayed below the input. */
   hint?: React.ReactNode;
 }
 
 /**
- * ورودی رمز عبور کانفیگ: همیشه چپ‌چین (کاراکترها به ترتیب تایپ دیده می‌شوند)،
- * با دکمهٔ نمایش/پنهان‌کردن و aria-pressed.
+ * Password input: always LTR (characters typed in order),
+ * with show/hide toggle button and aria-pressed attribute.
  */
 export function PasswordInput({ label, hint, className, ...props }: PasswordInputProps) {
   const [show, setShow] = React.useState(false);

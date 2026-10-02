@@ -12,13 +12,13 @@ SaKit is a client-side web toolkit built for developer productivity, format conv
 
 ## Privacy & Local Processing Architecture
 
-1. **Zero User Data Transmission**: All primary tools run client-side to the maximum extent possible, and user input data is never sent to a backend for normal processing.
+1. **Client-Side Processing**: Client-side processing with no backend required for normal operations. User input data is processed locally inside the browser.
 2. **Base64 Processing**: Handled entirely in-memory using browser-native `TextEncoder`, `TextDecoder`, and standard base64 utilities.
-3. **NPV Config Decryption**: Pure client-side cryptographic computation in Web JavaScript (AES-128 CTR, ChaCha20-Poly1305, and White-Box table lookups).
+3. **NPV Config Decryption**: Cryptographic computation executes client-side in Web JavaScript (AES-128 CTR, ChaCha20-Poly1305, and White-Box table lookups).
 4. **Static Asset Caching vs. Data Operations**:
    - The application registers a Service Worker (`sw.js`) and Web App Manifest (`manifest.webmanifest`).
-   - Core application bundles, self-hosted Vazirmatn variable fonts, and compressed binary lookup tables (`gen2_tables.bin.z`) are pre-cached on initial visit.
-   - Any claim of "fully offline" applies strictly to features that the current build can execute without network access.
+   - Core application bundles, self-hosted Vazirmatn variable fonts, and compressed binary lookup tables (`gen2_tables.bin.z`) are fetched and cached for faster subsequent loads.
+   - Offline functionality depends on required static assets already being available in the browser cache.
 
 ---
 
@@ -74,7 +74,7 @@ SaKit is a client-side web toolkit built for developer productivity, format conv
 ## Local Development
 
 ### Prerequisites
-- Node.js 18.0.0 or higher
+- Node.js `^20.19.0 || >=22.12.0` (required by Vite 7.x)
 - npm 9.0.0 or higher
 
 ### Commands
@@ -147,7 +147,7 @@ SaKit
     └── Locally bundled fonts and static assets
 ```
 
-All primary tools execute client-side to the maximum extent possible, and input data is not transmitted to a backend for normal processing.
+Client-side processing with no backend required for normal operations.
 
 ---
 
@@ -155,9 +155,9 @@ All primary tools execute client-side to the maximum extent possible, and input 
 
 - The NPV tool is provided for security research, configuration inspection, and user verification of config files.
 - Avoid placing real passwords, private keys, UUIDs, or sensitive credentials in Issues, Pull Requests, public samples, or public repositories.
-- File and input data processing occurs inside the browser, and the application requires no backend for normal decryption.
+- File and input data processing occurs inside the browser; the application requires no backend for normal operations.
 - Using a decoded configuration in another client or service may establish network connections to endpoints defined within that configuration. Verify server addresses and network parameters before connecting.
-- Offline claims apply strictly to features that the current build can execute without network access. For any asset loaded lazily at runtime, this behavior must be documented explicitly.
+- Offline functionality depends on required static assets already being available in the browser cache. For assets loaded lazily at runtime, network access is required on first fetch.
 
 ---
 

@@ -36,9 +36,9 @@ export const Base64Tool: React.FC<Base64ToolProps> = ({ lang }) => {
   const t = {
     title: isFa ? 'رمزگذاری / رمزگشایی Base64' : 'Base64 Encoder / Decoder',
     subtitle: isFa
-      ? 'متن یا فایل را با Base64 رمزگذاری یا رمزگشایی کنید. سریع، آفلاین، امن.'
-      : 'Encode text to Base64 or decode it back. Fast, offline, secure.',
-    badge: isFa ? 'آفلاین • سریع • امن' : 'Offline • Fast • Secure',
+      ? 'تبدیل و کدگذاری متن و فایل با الگوریتم Base64 به صورت مستقیم در مرورگر.'
+      : 'Encode and decode text or files with Base64 directly in your browser.',
+    badge: isFa ? 'سمت کلاینت • سریع • استاندارد' : 'Client-Side • Fast • Standard',
     encode: isFa ? 'رمزگذاری' : 'Encode',
     decode: isFa ? 'رمزگشایی' : 'Decode',
     inputLabel: isFa ? 'ورودی' : 'Input',
@@ -60,10 +60,10 @@ export const Base64Tool: React.FC<Base64ToolProps> = ({ lang }) => {
     cleared: isFa ? 'پاک شد' : 'Cleared',
     empty: isFa ? 'متنی برای کپی یا دانلود وجود ندارد' : 'Nothing to copy or download',
     sampleText: isFa ? 'سلام دنیا! Hello World' : 'Hello World! سلام دنیا',
-    h1Title: isFa ? 'کاملاً آفلاین' : 'Fully Offline',
+    h1Title: isFa ? 'پردازش در مرورگر' : 'In-Browser Processing',
     h1Desc: isFa
-      ? 'همه‌چیز در مرورگر شما پردازش می‌شود. هیچ متنی به سرور ارسال نخواهد شد.'
-      : 'Everything runs directly in your browser. Nothing is uploaded.',
+      ? 'پردازش مستقیم در مرورگر شما بدون نیاز به ارسال داده به سرور برای عملیات عادی.'
+      : 'Runs directly in your browser with no backend required for normal operations.',
     h2Title: isFa ? 'پشتیبانی کامل UTF-8' : 'Real UTF-8 Support',
     h2Desc: isFa
       ? 'حفظ کامل متن‌های فارسی، خطوط چندزبانه، علائم نگارشی و کاراکترهای خاص بدون خطا.'

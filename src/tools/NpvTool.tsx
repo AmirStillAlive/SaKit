@@ -88,14 +88,14 @@ async function readNpvsVersion(file: File): Promise<number | null> {
 }
 
 
-/** فایل NPVS را باز می‌کند و به همان ساختار خروجی .npvt تبدیل می‌کند. */
+/** Decrypts an NPVS file and normalizes it to the same output structure as .npvt. */
 async function decryptNpvsFile(file: File, password: string): Promise<{ result: Result; npv: any }> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   const version = bytes.length > 4 ? bytes[4] : 0;
 
   let res: any;
   if (version === 5) {
-    // نسخهٔ ۵ جدول‌های جدایی دارد؛ فقط برای همین فایل دانلود می‌شود
+    // Version 5 uses separated tables; loaded dynamically on demand.
     const gen2 = await import('../lib/npvs_gen2');
     if (!gen2.hasGen2Tables()) await gen2.loadGen2Tables();
     res = await gen2.decryptNpvsGen2(bytes, password);
@@ -108,7 +108,7 @@ async function decryptNpvsFile(file: File, password: string): Promise<{ result: 
     res = await npvs.decryptNpvs(bytes, password);
   }
 
-  // متن باز شده ممکن است یک کانفیگ، یک آرایه، یا چند کانفیگ پشت‌سرهم باشد
+  // Decrypted payload may be a single config object, an array, or concatenated configs.
   const entries: Entry[] = [];
   const pushItem = (item: Record<string, any>) => {
     const entry = createEntryFromItem(item);
@@ -123,17 +123,17 @@ async function decryptNpvsFile(file: File, password: string): Promise<{ result: 
   if (res.json) {
     collect(res.json);
   } else {
-    // متن آزاد: تکه‌های JSON را یکی‌یکی پیدا می‌کنیم
+    // Free-form text: locate and extract JSON objects sequentially.
     for (const m of res.plaintext.match(/\{[\s\S]*?\}/g) ?? []) {
       try {
         collect(JSON.parse(m));
       } catch {
-        /* تکهٔ ناقص را رد می‌کنیم */
+        /* Ignore malformed chunks */
       }
     }
   }
 
-  // سرآیند را هم بالای خروجی می‌نویسیم تا چیزی گم نشود
+  // Prepend header info to raw output for provenance.
   const keyLines: string[] = [];
   for (const [k, v] of res.keys as [string, string][]) {
     if (k !== 'DEK/CEK' && v) keyLines.push(`# ${k}: ${v}`);
@@ -225,7 +225,7 @@ async function decryptSingleFile(
   };
 }
 
-/** متن فایل «همه لینک‌ها»: هر خط یک لینک */
+/** Generates export text for all links (one per line). */
 function allLinksText(result: Result): string {
   const lines = [`# ${result.fileName} : خروجی SaKit`, ''];
   if (result.fileCount > 1) {
@@ -270,7 +270,7 @@ function CopyButton({
           await navigator.clipboard.writeText(value);
           onCopy?.();
         } catch {
-          /* اگر مرورگر اجازه نداد، بی‌صدا رد می‌شویم */
+          /* Ignore clipboard permission errors silently */
         }
         setDone(true);
         setTimeout(() => setDone(false), 1500);
@@ -377,7 +377,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
     setNeedsPassword(null);
     setSearchQuery('');
     setSelectedProto('all');
-    // بارگذاری جدول‌ها از حلقه رندر بیرون است
+    // Yield to browser event loop before heavy cryptographic processing
     await new Promise((r) => setTimeout(r, 30));
     try {
       const allEntries: Entry[] = [];
@@ -439,7 +439,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
       }
 
       if (allEntries.length === 0) {
-        // فایلی باز نشد (یا منتظر دریافت رمز است)
+        // No configs extracted (or waiting for user passphrase)
         return;
       }
 
@@ -464,7 +464,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
-      {/* سربرگ */}
+      {/* Header */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -478,7 +478,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
         </p>
       </div>
 
-      {/* ابزار */}
+      {/* File upload & actions */}
       <section className="rounded-surface border border-border bg-card p-5 shadow-surface">
         <div className="space-y-4">
           <FileUpload
@@ -565,10 +565,10 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
           )}
         </div>
 
-        {/* نتیجه */}
+        {/* Results */}
         {result && (
           <div className="mt-6 space-y-5 border-t border-border pt-5 result-reveal-enter">
-            {/* سربرگ نتیجه و اکشن‌ها */}
+            {/* Result header & bulk actions */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -671,7 +671,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
                 )}
               </div>
 
-              {/* اکشن‌های کپی همگانی و دانلود */}
+              {/* Bulk copy & download actions */}
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
@@ -714,7 +714,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
               </div>
             </div>
 
-            {/* نوار جست‌وجو و فیلترهای وایب‌فارسی */}
+            {/* Search bar & protocol filters */}
             {result.entries.length > 1 && (
               <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
                 <SearchInput
@@ -736,7 +736,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
               </div>
             )}
 
-            {/* لیست کانفیگ‌ها یا حالت خالی */}
+            {/* Config list or empty state */}
             {filteredEntries.length > 0 ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
@@ -767,7 +767,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
                       style={{ animationDelay: `${Math.min(i * 40, 280)}ms` }}
                       className="space-y-3 p-4 transition-colors hover:bg-muted/10 config-item-enter"
                     >
-                      {/* سربرگ کارت: نام، آدرس و بج‌های وایب‌فارسی */}
+                      {/* Card header: name, address, and protocol badges */}
                       <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
@@ -806,7 +806,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
                         </div>
                       </div>
 
-                      {/* لینک‌های قابل استفاده */}
+                      {/* Usable links */}
                       {e.links.length > 0 ? (
                         <div className="space-y-2">
                           {e.links.map((l, j) => (
@@ -833,7 +833,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
                         <p className="text-xs text-warning">{t.noLinkReady}</p>
                       )}
 
-                      {/* دکمه‌های JSON */}
+                      {/* JSON action buttons */}
                       <div className="flex flex-wrap items-center gap-2 border-t border-border/30 pt-1">
                         {e.customJson && (
                           <Button
@@ -888,7 +888,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
         )}
       </section>
 
-      {/* پرسش‌های پرتکرار */}
+      {/* FAQ section */}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground">{t.faqTitle}</h2>
         <Accordion items={FAQ_DATA[lang]} />

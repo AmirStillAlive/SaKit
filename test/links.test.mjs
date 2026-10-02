@@ -1,11 +1,10 @@
 /**
  * Regression tests for the link builders.
  *
- * Every case here is taken from a real .npvs file that was decrypted on
- * 2026-09-29, or from the exact values the app already shipped. Before the
- * fix all of these produced a vmess link that no client accepts.
+ * Validates protocol link generation across Shadowsocks (including 2022),
+ * VMess, VLESS (including REALITY), and Trojan configurations.
  *
- * Run: node web/test/links.test.mjs
+ * Run: node test/links.test.mjs
  */
 
 import {
@@ -45,18 +44,17 @@ function decodeB64Url(s) {
 }
 
 /* ------------------------------------------------------------------ *
- * Case 1: real shadowsocks 2022 file, "Finland (fast)"
- * source: Telegram Desktop, 1193 bytes, method=1, iters=600000
+ * Case 1: shadowsocks 2022 format
  * ------------------------------------------------------------------ */
-console.log('shadowsocks 2022 (real file)');
+console.log('shadowsocks 2022 (synthetic sample)');
 {
   const item = {
-    name: '\u{1F1EB}\u{1F1EE} Finland (fast)',
-    address: '81.12.33.223:8080',
+    name: 'SS-2022 Sample Node',
+    address: '198.51.100.223:8080',
     v2rayProfile: {
       configType: '3',
       addedTime: '1790632298525',
-      server: '81.12.33.223',
+      server: '198.51.100.223',
       serverPort: '8080',
       password: 'gXqk6/19VX5/wJYYbnV20Q==:6cVD2k4nm6xF0YXKa48ciQ==',
       method: '2022-blake3-aes-128-gcm',
@@ -79,7 +77,7 @@ console.log('shadowsocks 2022 (real file)');
       userInfo === '2022-blake3-aes-128-gcm:gXqk6/19VX5/wJYYbnV20Q==:6cVD2k4nm6xF0YXKa48ciQ==',
       userInfo,
     );
-    check('host preserved', m[2] === '81.12.33.223', m[2]);
+    check('host preserved', m[2] === '198.51.100.223', m[2]);
     check('port preserved', m[3] === '8080', m[3]);
   }
   check('no vmess scheme leaked', link && !link.value.startsWith('vmess://'));
@@ -88,16 +86,15 @@ console.log('shadowsocks 2022 (real file)');
 
 /* ------------------------------------------------------------------ *
  * Case 2: plain shadowsocks with a classic cipher
- * source: real file 16895, "@nitruStore 4" and "@nitruStore 52"
  * ------------------------------------------------------------------ */
-console.log('shadowsocks classic cipher (real file)');
+console.log('shadowsocks classic cipher');
 {
   const item = {
-    name: 'x',
+    name: 'ss-classic-sample',
     v2rayProfile: {
       configType: '3',
       method: 'chacha20-ietf-poly1305',
-      server: '1.2.3.4',
+      server: '192.0.2.10',
       serverPort: '8388',
       password: 'secretpass',
     },
@@ -113,21 +110,20 @@ console.log('shadowsocks classic cipher (real file)');
 }
 
 /* ------------------------------------------------------------------ *
- * Case 3: REALITY. This is the "lies about tls" bug.
- * source: real file 10937, 7 configs, all security=reality
+ * Case 3: REALITY protocol handling
  * ------------------------------------------------------------------ */
-console.log('REALITY (real file 10937)');
+console.log('REALITY protocol handling');
 {
   const item = {
-    name: 'reality',
+    name: 'reality-sample',
     v2rayProfile: {
       configType: '5',
-      server: '1.2.3.4',
+      server: '192.0.2.20',
       serverPort: '443',
       password: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
       method: 'none',
       security: 'reality',
-      sni: 'www.filimo.com',
+      sni: 'gateway.example.org',
       network: 'tcp',
       headerType: 'none',
       insecure: 'false',
@@ -141,7 +137,7 @@ console.log('REALITY (real file 10937)');
     const q = link.value.split('?')[1] || '';
     check('security=reality kept', q.includes('security=reality'), q.slice(0, 120));
     check('flow=xtls-rprx-vision kept', q.includes('flow=xtls-rprx-vision'));
-    check('sni kept', q.includes('sni=www.filimo.com'));
+    check('sni kept', q.includes('sni=gateway.example.org'));
     // the old code emitted security=none, which silently drops REALITY
     check('not downgraded to none', !q.includes('security=none'));
   }
@@ -185,10 +181,10 @@ console.log('genuine vmess (fixture)');
 console.log('vless with tls (configType=5)');
 {
   const item = {
-    name: 'g',
+    name: 'vless-tls-sample',
     v2rayProfile: {
       configType: '5',
-      server: '5.6.7.8',
+      server: '192.0.2.50',
       serverPort: '443',
       password: '11111111-2222-3333-4444-555555555555',
       security: 'tls',
@@ -204,22 +200,21 @@ console.log('vless with tls (configType=5)');
 
 /* ------------------------------------------------------------------ *
  * Case 6: trojan, non-uuid with tls
- * source: real file 16895, "@nitruStore 48" had a non-uuid with tls
  * ------------------------------------------------------------------ */
 console.log('trojan (non-uuid + tls)');
 {
   const item = {
-    name: 't',
+    name: 'trojan-sample',
     v2rayProfile: {
       configType: '5',
-      server: '9.9.9.9',
+      server: '192.0.2.90',
       serverPort: '443',
       password: 'not-a-uuid-value',
       security: 'tls',
       network: 'ws',
-      host: 'cdn.example',
+      host: 'cdn.example.org',
       path: '/',
-      sni: 'cdn.example',
+      sni: 'cdn.example.org',
     },
   };
   const link = buildProfileLink(item);
@@ -250,21 +245,21 @@ console.log('guards');
 }
 
 /* ------------------------------------------------------------------ *
- * Case 8: user VLESS config with tcp, headerType=http, security=none
+ * Case 8: VLESS configuration with tcp, headerType=http, security=none
  * ------------------------------------------------------------------ */
-console.log('user VLESS config (🚀🇺🇸 آمریکا)');
+console.log('VLESS HTTP Header Profile');
 {
   const item = {
-    name: '🚀🇺🇸 آمریکا.',
+    name: 'VLESS HTTP Header Node',
     v2rayProfile: {
       configType: '5',
       password: 'c5837baa-8d0c-4272-ace0-3967ba90b0b1',
-      server: '206.206.103.213',
+      server: '198.51.100.15',
       serverPort: 443,
       security: 'none',
       network: 'tcp',
       headerType: 'http',
-      host: 'cf-pages.coingecko.com,trafic.outbrain.com,wordpress.org',
+      host: 'cdn1.example.org,cdn2.example.org',
     },
   };
   const link = buildProfileLink(item);
@@ -273,7 +268,7 @@ console.log('user VLESS config (🚀🇺🇸 آمریکا)');
   check('security is none', link && link.value.includes('security=none'));
   check('headerType is http', link && link.value.includes('headerType=http'));
   check('type is tcp', link && link.value.includes('type=tcp'));
-  check('host is preserved', link && link.value.includes('cf-pages.coingecko.com'));
+  check('host is preserved', link && link.value.includes('cdn1.example.org'));
 }
 
 /* ------------------------------------------------------------------ *

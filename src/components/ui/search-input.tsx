@@ -7,7 +7,7 @@ export interface SearchInputProps
   value?: string;
   defaultValue?: string;
   onChange?: (value: string) => void;
-  /** پس از توقف تایپ به مدت debounce میلی‌ثانیه، با Enter یا با پاک شدن فیلد فراخوانی می‌شود */
+  /** Called after typing pauses for `debounce` ms, on Enter, or when the field is cleared. */
   onSearch?: (value: string) => void;
   debounce?: number;
   loading?: boolean;
@@ -16,7 +16,7 @@ export interface SearchInputProps
 }
 
 /**
- * جست‌وجوی وایب‌فارسی: ذره‌بین در راست، دکمه پاک کردن، دی‌بانس خودکار و پشتیبانی از Escape.
+ * Search input component: search icon, clear button, automatic debounce, and Escape key support.
  */
 export function SearchInput({
   value,

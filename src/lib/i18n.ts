@@ -12,7 +12,7 @@ export const FAQ_DATA: Record<Lang, FAQItem[]> = {
       id: 'how',
       title: 'چطور کار می‌کند؟',
       content:
-        'فایل npvt در واقع چند رشته base64 است که با AES-128 در حالت CTR رمز شده و کلید آن به شکل جدول‌های عمومی white-box پیاده شده است. این صفحه با استفاده از جدول‌های ریاضیاتی متن‌باز (پورت‌شده از پروژه آزاد Pantegnos)، کی‌استریم را کاملاً داخل مرورگر شما می‌سازد و نیازی به کلید مخفی سرور نیست. فایل‌های npvs نسخهٔ ۱ و ۵ نیز با جدول‌های عمومی gen1 و gen2 و رمزنگاری ChaCha20-Poly1305 کاملاً آفلاین باز می‌شوند. هیچ کدی مستقیماً از هیچ اپلیکیشن انحصاری استخراج نشده است.',
+        'فایل npvt در واقع چند رشته base64 است که با AES-128 در حالت CTR رمز شده و کلید آن به شکل جدول‌های عمومی white-box پیاده شده است. این صفحه با استفاده از جدول‌های ریاضیاتی متن‌باز (پورت‌شده از پروژه آزاد Pantegnos)، کی‌استریم را کاملاً داخل مرورگر شما می‌سازد و نیازی به کلید مخفی سرور نیست. فایل‌های npvs نسخهٔ ۱ و ۵ نیز با جدول‌های عمومی gen1 و gen2 و رمزنگاری ChaCha20-Poly1305 به صورت محلی در مرورگر باز می‌شوند (جدول‌های نسخه ۵ پس از یک بار دریافت، کش می‌شوند). هیچ کدی مستقیماً از هیچ اپلیکیشن انحصاری استخراج نشده است.',
     },
     {
       id: 'npvs-pass',
@@ -22,15 +22,15 @@ export const FAQ_DATA: Record<Lang, FAQItem[]> = {
     },
     {
       id: 'safe',
-      title: 'این رمز امن است؟',
+      title: 'امنیت و سازوکار رمزنگاری چگونه است؟',
       content:
-        'نه. چون جدول‌های رمز عمومی و در پروژه‌های متن‌باز شناخته‌شده هستند، هر کسی می‌تواند همین کار را بکند و این ساختار فقط جلوی خوانده شدن مستقیم را می‌گیرد. نکته مهم‌تر این است که کانفیگی که از این فایل‌ها بیرون می‌آید به سرور سازنده همان کانفیگ وصل می‌شود، پس حتما بدانید به چه سروری اعتماد می‌کنید.',
+        'چون جدول‌های رمز عمومی و در پروژه‌های پژوهشی متن‌باز مستند هستند، هر پیاده‌سازی سازگاری می‌تواند این فایل‌ها را باز کند و این ساختار برای پنهان‌سازی پیکربندی است نه امنیت غیرقابل‌نفوذ. علاوه بر این، کانفیگی که از این فایل‌ها بیرون می‌آید ترافیک را به سمت سرور سازنده همان کانفیگ هدایت می‌کند، بنابراین تنها از سرورهایی که به آن‌ها اطمینان دارید استفاده کنید.',
     },
     {
       id: 'privacy',
       title: 'فایل من کجا می‌رود؟',
       content:
-        'فایل فقط داخل همین صفحه خوانده می‌شود و هیچ درخواستی به هیچ سروری فرستاده نمی‌شود. وب‌اپلیکیشن مجهز به Service Worker و پشتیبانی PWA است؛ با یک بار باز شدن صفحه، تمام فایل‌ها، اسکریپت‌ها و جدول‌ها در حافظهٔ مرورگر (Cache Storage) ذخیره می‌شوند و بعد از آن حتی با قطعی کامل اینترنت، صفحه و فرآیند رمزگشایی کاملاً آفلاین کار می‌کنند.',
+        'پردازش داده‌ها و تحلیل فایل‌ها مستقیماً در سمت کلاینت انجام می‌شود و عملیات عادی به بک‌اند وابسته نیست. برنامه از Service Worker برای کش کردن دارایی‌های استاتیک استفاده می‌کند تا در صورت در دسترس بودن دارایی‌های کش‌شده، ابزارها بدون نیاز به اتصال مجدد در دسترس باشند.',
     },
     {
       id: 'batch',
@@ -50,7 +50,7 @@ export const FAQ_DATA: Record<Lang, FAQItem[]> = {
       id: 'how',
       title: 'How does it work?',
       content:
-        'An .npvt file consists of base64-encoded strings encrypted with AES-128 in CTR mode using public white-box key tables. This web page embeds those open-source tables (ported from the open-source Pantegnos project) and generates the keystream locally in your browser without requiring any secret key from a server. Version 1 and Version 5 .npvs files are also supported: decrypted offline using public gen1 & gen2 white-box tables and ChaCha20-Poly1305. No proprietary assets were extracted from any closed-source APK.',
+        'An .npvt file consists of base64-encoded strings encrypted with AES-128 in CTR mode using public white-box key tables. This web page embeds those open-source tables (ported from the open-source Pantegnos project) and generates the keystream locally in your browser without requiring any secret key from a server. Version 1 and Version 5 .npvs files are also supported: decrypted client-side using public gen1 & gen2 white-box tables and ChaCha20-Poly1305 (version 5 lookup tables are cached upon first retrieval). No proprietary assets were extracted from any closed-source APK.',
     },
     {
       id: 'npvs-pass',
@@ -60,15 +60,15 @@ export const FAQ_DATA: Record<Lang, FAQItem[]> = {
     },
     {
       id: 'safe',
-      title: 'Is this encryption secure?',
+      title: 'How does the encryption and security model work?',
       content:
-        'No. Because white-box tables are mathematically public and documented in open-source research, anyone can decrypt these files. Furthermore, the extracted configs route traffic through the creator’s server, so only connect to servers you trust.',
+        'Because white-box tables are mathematically public and documented in open-source research, any compatible client can decrypt these files. This envelope functions as an obfuscation container rather than an unbreakable vault. Furthermore, extracted configurations route traffic through endpoints defined by the creator, so only connect to servers you trust.',
     },
     {
       id: 'privacy',
       title: 'Where do my files go?',
       content:
-        'All processing is performed 100% locally in your browser. No files, configs, or queries are ever sent to any remote server. The web app is a Progressive Web App (PWA) with a Service Worker that caches all scripts, styles, and tables, enabling it to load and decrypt files completely offline without an active internet connection.',
+        'Normal data processing is executed client-side inside the browser without requiring a backend server. The application utilizes a Service Worker to cache static assets, allowing cached features to function without an active network connection once preloaded.',
     },
     {
       id: 'batch',
@@ -89,7 +89,7 @@ export const I18N = {
   fa: {
     langLabel: 'EN',
     langTitle: 'تغییر زبان به انگلیسی / Switch to English',
-    badge: 'کاملاً آفلاین در مرورگر شما: بدون ارسال فایل به هیچ سرور',
+    badge: 'پردازش سمت کلاینت: بدون نیاز به بک‌اند برای عملیات عادی',
     title: 'رمزگشایی کانفیگ NPV Tunnel',
     subtitle:
       'فایل کانفیگ .npvt یا .npvs نسخهٔ ۱ و ۵ را بگذارید تا به JSON خوانا و لینک آمادهٔ ورود تبدیل شود. رمزگشایی با جدول‌های white-box کاملاً داخل همین صفحه اجرا می‌شود.',
@@ -132,7 +132,7 @@ export const I18N = {
   en: {
     langLabel: 'فا',
     langTitle: 'تغییر زبان به فارسی / Switch to Persian',
-    badge: 'Runs 100% offline in your browser: no files sent to any server',
+    badge: 'Client-side processing: no backend required for normal operations',
     title: 'NPV Tunnel Config Decryptor',
     subtitle:
       'Drop your .npvt or .npvs (v1 & v5) config files to get readable JSON and ready-to-use client links. Decrypted locally using white-box tables.',

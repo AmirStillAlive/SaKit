@@ -1,14 +1,11 @@
-// آزمون سرتاسری در مرورگر واقعی: صفحهٔ build شده بالا می‌آید، یک فایل NPVS واقعی
-// به آن داده می‌شود و خروجی روی صفحه بررسی می‌گردد. این همان مسیری است که کاربر
-// طی می‌کند، پس یکپارچگی باندل و UI را هم می‌سنجد.
+// End-to-end browser test: launches built production bundle in headless browser,
+// feeds an actual NPVS sample file, and validates rendered output.
+// Tests the exact path a user takes, verifying bundle and UI integration.
 //
-//   node web/test/browser-e2e.mjs [پوشه docs] [--url=http://127.0.0.1:8137/]
+//   node test/browser-e2e.mjs [docs folder] [--url=http://127.0.0.1:8137/]
 //
-// اگر --url داده شود، سرور جدیدی اسپاون نمی‌شود و همان آدرس آزمایش می‌شود
-// (برای هاست داخلی). در این حالت پوشهٔ docs باید همان جایی باشد که سرور می‌دهد،
-// چون فایل نمونه برای آپلود موقتاً همان‌جا نوشته می‌شود.
-//
-// از پروتکل DevTools مرورگر استفاده می‌کند (بدون هیچ وابستگی npm).
+// If --url is provided, connects directly without spawning a new server.
+// Uses browser DevTools Protocol (CDP) with zero extra npm dependencies.
 
 import { existsSync, mkdtempSync, rmSync, copyFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -29,7 +26,7 @@ const BROWSERS = [
 ];
 const browser = BROWSERS.find((p) => existsSync(p));
 if (!browser) {
-  console.error('Chrome یا Edge پیدا نشد؛ آزمون مرورگر رد شد.');
+  console.error('Chrome or Edge not found; browser test skipped.');
   process.exit(2);
 }
 
@@ -47,13 +44,13 @@ const checkHas = (name, haystack, needle) => {
     console.log(`  ok   ${name}`);
   } else {
     failed++;
-    console.log(`  FAIL ${name}\n       «${needle}» در خروجی نبود`);
+    console.log(`  FAIL ${name}\n       «${needle}» not in output`);
   }
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** کلاینت سبک روی پروتکل DevTools مرورگر. */
+/** Lightweight CDP client over browser DevTools WebSocket. */
 class Cdp {
   constructor(ws) {
     this.ws = ws;
@@ -85,9 +82,9 @@ class Cdp {
           return new Cdp(ws);
         }
       } catch {
-        /* هنوز بالا نیامده */
+        /* Server not ready yet */
       }
-      if (Date.now() > deadline) throw new Error('اتصال به مرورگر برقرار نشد');
+      if (Date.now() > deadline) throw new Error('Failed to connect to browser CDP port');
       await sleep(250);
     }
   }
@@ -100,7 +97,7 @@ class Cdp {
     });
   }
 
-  /** اسکریپت را در صفحه اجرا می‌کند و نتیجهٔ آخرین عبارت را برمی‌گرداند. */
+  /** Evaluates JavaScript in page context and returns last expression value. */
   async eval(expression) {
     const r = await this.send('Runtime.evaluate', {
       expression,
@@ -141,43 +138,43 @@ const chrome = spawn(
 const cleanup = async () => {
   chrome.kill();
   srv?.kill();
-  // پروفایل مرورگر تا چند لحظه بعد از بستن قفل است؛ صبر می‌کنیم تا آزاد شود
+  // Browser profile directory remains temporarily locked after process termination
   for (let i = 0; i < 20; i++) {
     await sleep(250);
     try {
       rmSync(profile, { recursive: true, force: true });
       return;
     } catch {
-      // هنوز قفل است
+      // Directory still locked, retry
     }
   }
 };
 
 const uploaded = join(docsDir, 'e2e-sample.npvs');
 try {
-  console.log('آزمون سرتاسری در مرورگر');
+  console.log('End-to-end browser test');
   copyFileSync(join(here, 'fixtures/sample-appkey.npvs'), uploaded);
 
   const cdp = await Cdp.attach(cdpPort);
   await cdp.send('Runtime.enable');
 
-  // ابتدا منتظر می‌مانیم تا شل SaKit بالا بیاید
+  // Wait for SaKit application shell to mount
   let initialReady = false;
   for (let i = 0; i < 80; i++) {
     initialReady = await cdp.eval(`!!document.querySelector('button') && document.body.innerText.includes('SaKit')`);
     if (initialReady) break;
     await sleep(250);
   }
-  check('اپ بالا آمد', initialReady, true);
+  check('App mounted', initialReady, true);
 
-  // در SaKit ابزار NPV را از سایدبار انتخاب می‌کنیم
+  // Switch to NPV tool view
   await cdp.eval(`(() => {
     const btn = [...document.querySelectorAll('button')].find(b => b.textContent.includes('NPV'));
     if (btn) btn.click();
   })()`);
   await sleep(600);
 
-  // منتظر می‌مانیم تا ابزار NPV رندر شود
+  // Wait for NPV tool component to render
   let ready = false;
   for (let i = 0; i < 80; i++) {
     ready = await cdp.eval(
@@ -186,15 +183,15 @@ try {
     if (ready) break;
     await sleep(250);
   }
-  check('ابزار NPV لود شد', ready, true);
+  check('NPV tool loaded', ready, true);
 
   const title = await cdp.eval('document.title');
-  checkHas('عنوان «SaKit» دارد', title, 'SaKit');
+  checkHas('Title contains "SaKit"', title, 'SaKit');
 
   const heading = await cdp.eval('document.querySelector("h1")?.textContent ?? ""');
-  check('سرفصل درست است', String(heading).trim(), 'رمزگشایی کانفیگ NPV Tunnel');
+  check('Heading matches expected text', String(heading).trim(), 'رمزگشایی کانفیگ NPV Tunnel');
 
-  // فایل NPVS را به input می‌دهیم و دکمه را می‌زنیم
+  // Feed NPVS file to file input and trigger decrypt action
   const result = await cdp.eval(`(async () => {
     const buf = new Uint8Array(await (await fetch('e2e-sample.npvs')).arrayBuffer());
     const file = new File([buf], 'sample.npvs');
@@ -213,7 +210,7 @@ try {
     for (let i = 0; i < 80; i++) {
       await new Promise(r => setTimeout(r, 250));
       const text = document.body.innerText;
-      // نتیجه یا شمارش کانفیگ‌ها، یا پیام خطا
+      // Await decrypted configs count or error banner
       if (text.includes('استخراج شد') || text.includes('خطا')) {
         return { text: text.slice(0, 6000) };
       }
@@ -221,7 +218,7 @@ try {
     return { error: 'timeout', text: document.body.innerText.slice(0, 2000) };
   })()`);
 
-  check('بدون خطا تمام شد', result?.error ?? '', '');
+  check('Completed without error', result?.error ?? '', '');
   const body = result?.text ?? '';
 
   console.log('  ---');
@@ -235,14 +232,14 @@ try {
   );
   console.log('  ---');
 
-  // نتیجهٔ درست: نام کانفیگ و لینک ساخته‌شده باید روی صفحه باشند
-  checkHas('نام کانفیگ نمایش داده شد', body, 'EU-Cloudflare-1');
-  checkHas('سرور کانفیگ نمایش داده شد', body, 'example.com:443');
-  checkHas('لینک vmess ساخته شد', body, 'vmess://');
-  checkHas('شمارش کانفیگ درست است', body, '۱ کانفیگ استخراج شد');
-  check('پیام خطا نمایش داده نشد', String(body).includes('خطا'), false);
+  // Validation: config name and generated link must appear on screen
+  checkHas('Config name displayed', body, 'EU-Cloudflare-1');
+  checkHas('Config server displayed', body, 'example.com:443');
+  checkHas('vmess link generated', body, 'vmess://');
+  checkHas('Config count displayed', body, '۱ کانفیگ استخراج شد');
+  check('No error message displayed', String(body).includes('خطا'), false);
 
-  // --- نسخهٔ ۵: همان مسیر، با جدول‌های خودش که فقط الان دانلود می‌شوند ---
+  // --- Version 5: on-demand compressed table download and decryption path ---
   console.log('  --- نسخهٔ ۵ ---');
   const uploaded5 = join(docsDir, 'e2e-sample-gen2.npvs');
   copyFileSync(join(here, 'fixtures/sample-gen2.npvs'), uploaded5);

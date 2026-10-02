@@ -4,6 +4,9 @@
   "version": "1.0.0",
   "description": "Browser-based toolkit for data encoding, decoding, inspecting, and converting",
   "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

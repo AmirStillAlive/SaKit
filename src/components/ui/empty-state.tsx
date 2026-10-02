@@ -10,7 +10,7 @@ export interface EmptyStateProps {
   className?: string;
 }
 
-/** حالت خالی وایب‌فارسی: اعلام وضعیت و ارائه اقدام مناسب */
+/** Empty state placeholder component with action slot. */
 export function EmptyState({ icon: Icon = Inbox, title, description, action, className }: EmptyStateProps) {
   return (
     <div className={cn("flex flex-col items-center gap-2 rounded-xl border border-dashed border-input p-8 text-center", className)}>

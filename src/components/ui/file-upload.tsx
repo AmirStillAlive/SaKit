@@ -16,8 +16,8 @@ export interface FileUploadProps {
 }
 
 /**
- * آپلود فایل وایب‌فارسی: پشتیبانی از یک یا چند فایل، کشیدن و رها کردن،
- * نمایش فهرست فایل‌ها، حذف تکی یا پاک‌سازی گروهی (دوزبانه).
+ * File upload component: drag-and-drop zone, multi-file selection,
+ * individual removal, and batch clearing with bilingual support.
  */
 export function FileUpload({
   accept,
@@ -149,7 +149,7 @@ export function FileUpload({
           className="sr-only"
           onChange={(e) => {
             add(e.target.files);
-            // ریست کردن مقدار input تا انتخاب مجدد همان فایل هم رویداد change بدهد
+            // Reset input value so selecting the same file again still fires change event
             e.target.value = '';
           }}
         />

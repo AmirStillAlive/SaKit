@@ -1,7 +1,7 @@
-// تولید بردار مرجع ChaCha20-Poly1305 با پیاده‌سازی مستقل Node
-// تا تست پایتون و وب با یک مرجع بیرونی راستی‌آزمایی شود.
+// Generates ChaCha20-Poly1305 reference vector using Node crypto
+// to cross-verify browser and Python implementations against external reference.
 //
-//   node web/test/chacha-vector.mjs
+//   node test/chacha-vector.mjs
 
 import { createCipheriv } from 'node:crypto';
 

@@ -169,8 +169,8 @@ function AppShell() {
     langTitle: isFa ? 'تغییر زبان به انگلیسی / Switch to English' : 'Switch to Persian / تغییر زبان به فارسی',
     github: isFa ? 'گیت‌هاب' : 'GitHub',
     footerText: isFa
-      ? 'جعبه‌ابزار SaKit: پردازش کاملاً امن و ۱۰۰٪ آفلاین در مرورگر شما بدون ارسال داده.'
-      : 'SaKit: 100% Client-Side & Offline Web Toolkit. Zero data transmission.',
+      ? 'جعبه‌ابزار SaKit: پردازش سمت کلاینت در مرورگر بدون نیاز به سرور واسط برای عملیات عادی.'
+      : 'SaKit: Client-side processing with no backend required for normal operations.',
     collapseSidebar: isFa ? 'بستن سایدبار' : 'Collapse sidebar',
     expandSidebar: isFa ? 'باز کردن سایدبار' : 'Expand sidebar',
   };

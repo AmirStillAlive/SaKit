@@ -16,7 +16,7 @@ export interface AlertProps extends Omit<React.HTMLAttributes<HTMLDivElement>, '
   icon?: React.ComponentType<{ className?: string }>;
 }
 
-/** هشدار درون صفحه‌ای. آیکن در شروع خط (راست)؛ خطاها role="alert" می‌گیرند. */
+/** In-page alert banner. Renders leading icon with appropriate ARIA roles. */
 export function Alert({ variant = 'info', title, icon, className, children, ...props }: AlertProps) {
   const s = styles[variant];
   const Icon = icon ?? s.icon;

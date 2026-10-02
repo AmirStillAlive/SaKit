@@ -1,16 +1,16 @@
 /**
- * npvs_gen2.js: باز کردن نسخهٔ ۵ (.npvs نسل جدید، پاکت فشرده gen2)
+ * npvs_gen2.js: Decrypts NPVS version 5 (new-generation compressed NPF envelope).
  *
- * پورت جاوااسکریپت از پروژهٔ Pantegnos (پروانه MIT):
+ * JavaScript port of Go source from Pantegnos project (MIT License):
  *   internal/modules/impl/npvs_gen2.go
  *   internal/modules/impl/npvs_gen2_wb.go
  *
- * مسیر appKey (method=2) بدون رمز و کاملا آفلاین باز می‌شود چون جدول‌های
- * white-box نسل ۲ داخل خود همین صفحه است. مسیر passphrase (method=1) به رمز
- * نیاز دارد و method=0 (گیرنده) به کلید خصوصی.
+ * The appKey path (method=2) derives keys client-side via embedded gen-2
+ * white-box tables. The passphrase path (method=1) requires a password,
+ * and method=0 (recipient) requires a private key.
  *
- * جدول‌ها در فایل ثابت gen2_tables.bin.z کنار صفحه هستند و فقط وقتی فایل
- * نسخهٔ ۵ بدهید دانلود می‌شوند (zlib -> ۱۴۹۵۶۸ بایت خام).
+ * Tables are stored in static file gen2_tables.bin.z and decompressed on demand
+ * via zlib/DecompressionStream (149,568 raw bytes).
  */
 
 import {
@@ -55,7 +55,7 @@ const TE = new TextEncoder();
 /** @type {Uint8Array|null} */
 let GEN2_TABLES = null;
 
-/** جدول‌های بازشده را دستی می‌دهد (تست‌ها و لودر مرورگر). */
+/** Directly provides decompressed tables (for tests and custom loaders). */
 export function setGen2Tables(bytes) {
   if (bytes.length !== GEN2_TABLES_SIZE) {
     throw new NpvsError(
@@ -70,7 +70,7 @@ export function hasGen2Tables() {
   return GEN2_TABLES !== null;
 }
 
-/** فایل ثابت gen2_tables.bin.z را می‌گیرد و با zlib باز می‌کند. */
+/** Fetches static gen2_tables.bin.z file and decompresses with DecompressionStream. */
 export async function loadGen2Tables(url = './gen2_tables.bin.z') {
   if (GEN2_TABLES) return GEN2_TABLES;
   const res = await fetch(url);
@@ -87,7 +87,7 @@ export async function loadGen2Tables(url = './gen2_tables.bin.z') {
 }
 
 // ---------------------------------------------------------------------------
-// هستهٔ white-box نسل ۲
+// White-box core for Gen2
 // ---------------------------------------------------------------------------
 
 function be32(block, off) {
@@ -116,7 +116,7 @@ function shiftState(state) {
   return out;
 }
 
-/** خروجی ۱۶ بایتی white-box نسل ۲ از روی نمک ۱۶ بایتی. */
+/** Generates 16-byte white-box Gen2 output from 16-byte salt. */
 export function gen2A16(salt) {
   if (!GEN2_TABLES) throw new NpvsError('جدول‌های نسل ۲ بارگذاری نشده‌اند.');
   if (salt.length !== 16) {
@@ -149,7 +149,7 @@ export function gen2A16(salt) {
   return out;
 }
 
-/** KDK نسل ۲: SHA-256 روی (label + a16 + configID). */
+/** Gen2 KDK derivation: SHA-256 over (label + a16 + configID). */
 export async function gen2Kdk(a16, configId) {
   const buf = new Uint8Array(GEN2_APPKEY_LABEL.length + a16.length + configId.length);
   buf.set(TE.encode(GEN2_APPKEY_LABEL), 0);
@@ -158,7 +158,7 @@ export async function gen2Kdk(a16, configId) {
   return new Uint8Array(await crypto.subtle.digest('SHA-256', buf));
 }
 
-/** HKDF-SHA256 با WebCrypto (همان الگوی Go). */
+/** HKDF-SHA256 using WebCrypto API. */
 async function hkdfSha256(ikm, salt, info, outLen = 32) {
   const key = await crypto.subtle.importKey('raw', ikm, 'HKDF', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits(
@@ -175,7 +175,7 @@ async function hkdfSha256(ikm, salt, info, outLen = 32) {
 }
 
 // ---------------------------------------------------------------------------
-// تجزیهٔ پاکت فشردهٔ v5
+// Parsing compressed v5 envelope
 // ---------------------------------------------------------------------------
 
 export function isGen2Envelope(data) {
@@ -189,7 +189,7 @@ export function isGen2Envelope(data) {
   );
 }
 
-/** پاکت فشردهٔ v5 را می‌شکافد (آفست‌ها عینا از Go). */
+/** Parses compressed v5 envelope structure according to protocol specification. */
 export function parseGen2Envelope(data) {
   if (!isGen2Envelope(data)) throw new NpvsError('پاکت فشردهٔ نسخهٔ ۵ نیست');
 
@@ -272,7 +272,7 @@ export function parseGen2Envelope(data) {
   return env;
 }
 
-/** بدنهٔ NPF: contentID + فهرست (seq, flags, blob). */
+/** Parses NPF body: contentID + list of (seq, flags, blob) records. */
 export function parseGen2Body(body) {
   if (
     body.length < 66 ||
@@ -302,7 +302,7 @@ export function parseGen2Body(body) {
 }
 
 // ---------------------------------------------------------------------------
-// باز کردن کلید و محتوا
+// Key unwrapping and content decryption
 // ---------------------------------------------------------------------------
 
 async function pbkdf2Sha256(password, salt, iterations, dkLen = 32) {
@@ -317,7 +317,7 @@ async function pbkdf2Sha256(password, salt, iterations, dkLen = 32) {
   return new Uint8Array(bits);
 }
 
-/** پاکت را باز می‌کند: DEK + متادیتای خوانا + فهرست کلیدها. */
+/** Unwraps envelope: derives DEK, decrypts metadata, and builds key provenance. */
 export async function gen2Open(env, password = '') {
   let kdk;
   const methodKeys = [];
@@ -342,7 +342,7 @@ export async function gen2Open(env, password = '') {
     throw new NpvsError('باز کردن پاکت کلید ناموفق بود');
   }
 
-  // متاباب: AAD همان بایت‌های سرآیند تا قبل از طول متاباب است
+  // Metadata blob: AAD is header bytes prior to metadata length
   const metaKey = await hkdfSha256(dek, env.nonce, METADATA_INFO);
   const metadata = chachaOpen(metaKey, env.nonce, env.metaBlob, env.prefix);
   if (!metadata) throw new NpvsError('متاباب مهرشده باز نشد');
@@ -357,7 +357,7 @@ export async function gen2Open(env, password = '') {
   return { dek, metadata, keys };
 }
 
-/** فیلدهای NPF را یکی‌یکی باز می‌کند. */
+/** Decrypts individual NPF fields sequentially. */
 export async function decryptGen2Fields(env, dek) {
   const { contentId, rows } = parseGen2Body(env.body);
   const fields = new Map();
@@ -397,7 +397,7 @@ function bytesToHex(b) {
   return s;
 }
 
-/** متن یک فیلد را تمیز می‌کند (رشتهٔ JSON داخل گیومه را هم باز می‌کند). */
+/** Normalizes field text content, handling quoted JSON strings. */
 function fieldText(raw) {
   const s = new TextDecoder().decode(raw).trim();
   if (s.length >= 2 && s[0] === '"' && s[s.length - 1] === '"') {
@@ -410,7 +410,7 @@ function fieldText(raw) {
   return s;
 }
 
-/** جدول sentinel (seq=0xFFFF) را به فهرست کانفیگ‌ها تبدیل می‌کند. */
+/** Reconstructs config list from sentinel table (seq=0xFFFF). */
 export function gen2Configs(fields) {
   const table = fields.get(SENTINEL_SEQ);
   if (!table) return null;
@@ -435,10 +435,10 @@ export function gen2Configs(fields) {
 }
 
 // ---------------------------------------------------------------------------
-// نقطهٔ ورود
+// Entry point
 // ---------------------------------------------------------------------------
 
-/** فایل نسخهٔ ۵ را باز می‌کند و همان ساختار خروجی نسخهٔ ۱ را برمی‌گرداند. */
+/** Decrypts NPVS version 5 file and returns compatible output format. */
 export async function decryptNpvsGen2(data, password = '') {
   const env = parseGen2Envelope(data);
   const { dek, metadata, keys } = await gen2Open(env, password);
