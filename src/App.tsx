@@ -140,7 +140,16 @@ function AppShell() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-brand/20 selection:text-brand">
+    <div className="relative min-h-screen flex flex-col bg-background text-foreground selection:bg-brand/20 selection:text-brand">
+      {/* Dynamic Cyberpunk Ambient Background (VibeFarsi Neon Grid & Orbs) */}
+      <div className="bg-fx" aria-hidden="true">
+        <div className="bg-grid" />
+        <div className="bg-glow" />
+        <div className="bg-orb orb-a" />
+        <div className="bg-orb orb-b" />
+        <div className="bg-scanlines" />
+      </div>
+
       {/* Top Navbar */}
       <header className="sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6 h-14 border-b border-border bg-card/80 backdrop-blur-md">
         <div className="flex items-center gap-3">
@@ -194,18 +203,6 @@ function AppShell() {
             <Languages className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="font-semibold">{t.langLabel}</span>
           </Button>
-
-          {/* GitHub Repo */}
-          <a
-            href="https://github.com/AmirStillAlive/SaKit"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 h-8 text-xs font-medium rounded-control border border-border bg-secondary/50 hover:bg-secondary hover:text-foreground text-muted-foreground transition-all duration-200 active:scale-95"
-            title="GitHub"
-          >
-            <Github className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{t.github}</span>
-          </a>
         </div>
       </header>
 

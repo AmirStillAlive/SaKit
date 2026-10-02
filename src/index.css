@@ -159,3 +159,104 @@
 .fa-num {
   font-feature-settings: "ss01";
 }
+
+/* ---------- Cyberpunk background FX (VibeFarsi + SaKit Neon Grid) ---------- */
+.bg-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 229, 127, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 127, 0.045) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, black 25%, transparent 75%);
+  animation: gridDrift 28s linear infinite;
+}
+.bg-glow {
+  position: absolute;
+  inset-inline: 0;
+  top: -240px;
+  height: 560px;
+  background: radial-gradient(ellipse 55% 60% at 50% 40%, rgba(0, 229, 127, 0.14), transparent 70%);
+  animation: glowPulse 6s ease-in-out infinite;
+}
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(95px);
+  opacity: 0.45;
+}
+.orb-a {
+  width: 360px;
+  height: 360px;
+  top: 10%;
+  inset-inline-start: -100px;
+  background: rgba(0, 229, 127, 0.1);
+  animation: floatA 12s ease-in-out infinite;
+}
+.orb-b {
+  width: 300px;
+  height: 300px;
+  top: 48%;
+  inset-inline-end: -80px;
+  background: rgba(0, 229, 127, 0.07);
+  animation: floatB 14s ease-in-out infinite;
+}
+.bg-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 0 1px, transparent 1px 4px);
+}
+
+@keyframes gridDrift {
+  to { background-position: 0 40px, 0 0; }
+}
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+@keyframes floatA {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(26px); }
+}
+@keyframes floatB {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-22px); }
+}
+
+/* Stagger animations for smooth layout entry */
+.stagger-in {
+  animation: fadeUp 380ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Smooth button ripple effect */
+.btn-ripple {
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  animation: rippleFx 550ms linear;
+  background-color: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+@keyframes rippleFx {
+  to {
+    transform: scale(3.5);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-grid, .bg-glow, .bg-orb, .stagger-in {
+    animation: none !important;
+  }
+}

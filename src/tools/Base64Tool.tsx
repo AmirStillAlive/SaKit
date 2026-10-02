@@ -194,14 +194,21 @@ export const Base64Tool: React.FC<Base64ToolProps> = ({ lang }) => {
       <div className="bg-card border border-border rounded-surface p-4 sm:p-6 shadow-surface space-y-5">
         {/* Mode Selector Segment */}
         <div className="flex items-center justify-between pb-3 border-b border-border">
-          <div className="inline-flex p-1 bg-secondary rounded-control border border-border">
+          <div className="relative inline-flex p-1 bg-secondary/80 rounded-control border border-border">
+            <span
+              className={cn(
+                'absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-sm bg-brand/15 border border-brand/30 transition-all duration-250 ease-out shadow-[0_0_12px_rgba(0,229,127,0.2)]',
+                mode === 'encode' ? 'start-1' : 'start-[calc(50%+2px)]'
+              )}
+              aria-hidden="true"
+            />
             <button
               type="button"
               onClick={() => setMode('encode')}
               className={cn(
-                'flex items-center gap-2 px-4 py-1.5 rounded-sm text-sm font-medium transition-colors',
+                'relative z-10 flex items-center gap-2 px-4 py-1.5 rounded-sm text-sm font-semibold transition-colors duration-200',
                 mode === 'encode'
-                  ? 'bg-background text-foreground shadow-sm'
+                  ? 'text-brand'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -212,9 +219,9 @@ export const Base64Tool: React.FC<Base64ToolProps> = ({ lang }) => {
               type="button"
               onClick={() => setMode('decode')}
               className={cn(
-                'flex items-center gap-2 px-4 py-1.5 rounded-sm text-sm font-medium transition-colors',
+                'relative z-10 flex items-center gap-2 px-4 py-1.5 rounded-sm text-sm font-semibold transition-colors duration-200',
                 mode === 'decode'
-                  ? 'bg-background text-foreground shadow-sm'
+                  ? 'text-brand'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -268,7 +275,7 @@ export const Base64Tool: React.FC<Base64ToolProps> = ({ lang }) => {
         </div>
 
         {/* Divider with Swap Button */}
-        <div className="relative flex items-center justify-center my-2">
+        <div className="relative flex items-center justify-center my-3">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-border" />
           </div>
@@ -276,9 +283,10 @@ export const Base64Tool: React.FC<Base64ToolProps> = ({ lang }) => {
             type="button"
             onClick={handleSwap}
             title={t.swap}
-            className="relative z-10 w-9 h-9 rounded-full bg-secondary border border-border hover:border-brand/50 flex items-center justify-center text-muted-foreground hover:text-brand transition-all shadow-sm hover:scale-105 active:scale-95"
+            aria-label={t.swap}
+            className="group relative z-10 w-10 h-10 rounded-full bg-card border border-brand/40 hover:border-brand flex items-center justify-center text-brand hover:text-brand bg-brand/5 hover:bg-brand/15 transition-all duration-300 shadow-[0_0_15px_rgba(0,229,127,0.2)] hover:shadow-[0_0_25px_rgba(0,229,127,0.45)] active:scale-90"
           >
-            <ArrowUpDown className="w-4 h-4" />
+            <ArrowUpDown className="w-4 h-4 transition-transform duration-300 group-hover:rotate-180" />
           </button>
         </div>
 
