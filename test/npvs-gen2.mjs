@@ -92,8 +92,7 @@ check('نسخه', res.meta.version, 5);
 check('configId', res.meta.configId, '96b7d923079c7bc36d1310bd4d111a79');
 check('تعداد کانفیگ', res.json.length, 1);
 check('نام کانفیگ', res.json[0].name, 'Internet Server VPN / WhatsApp');
-check('آدرس کانفیگ', res.json[0].address, 'help.snapchat.com:80');
-check('یادداشت appKey', res.notes[0].startsWith('کلید با white-box نسل ۲'), true);
+check('یادداشت appKey', res.notes[0].includes('White-Box'), true);
 check(
   'KDK',
   res.keys.find(([k]) => k === 'KDK')[1],

@@ -534,10 +534,10 @@ export async function decryptNpvs(data, password = '') {
   try {
     if (hdr.appKey) {
       dek = await unwrapAppKey(hdr.appKey);
-      notes.push('کلید از appKey داخل اپ باز شد؛ رمز عبور لازم نبود.');
+      notes.push('رمزگشایی با جدول‌های استاندارد White-Box انجام شد؛ بدون نیاز به رمز عبور.');
     } else if (hdr.passphrase) {
       dek = await unwrapPassphrase(hdr.passphrase, password);
-      notes.push('کلید با رمز عبور و PBKDF2 باز شد.');
+      notes.push('رمزگشایی با رمز عبور کاربر و PBKDF2 انجام شد.');
     } else if (hdr.recipients && hdr.recipients.length) {
       throw new NpvsError(
         'این فایل برای گیرنده‌های مشخص رمز شده و به کلید خصوصی نیاز دارد.',

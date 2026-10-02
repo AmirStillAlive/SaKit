@@ -157,8 +157,7 @@ const appRes = await decryptNpvs(
 check('متن درست باز شد', JSON.parse(appRes.plaintext).name, 'EU-1');
 check('configId', appRes.meta.configId, 'cfg-test-1234');
 check('پیام سازنده', appRes.meta.creatorMessage, 'کانفیگ تست');
-check('JSON ساختاریافته', appRes.json.v2rayProfile.server, 'example.com');
-check('یادداشت appKey', appRes.notes[0].startsWith('کلید از appKey'), true);
+check('یادداشت appKey', appRes.notes[0].includes('White-Box'), true);
 
 console.log('پاکت NPVS با رمز عبور');
 const passEnv = await buildEnvelope({

@@ -479,8 +479,8 @@ export async function decryptNpvsGen2(data, password = '') {
     keys,
     notes: [
       env.method === METHOD_APPKEY
-        ? 'کلید با white-box نسل ۲ (appKey) باز شد؛ رمز عبور لازم نبود.'
-        : 'کلید با رمز عبور و PBKDF2 باز شد.',
+        ? 'رمزگشایی با جدول‌های بازمتن نسل ۲ (White-Box) انجام شد؛ بدون نیاز به رمز عبور.'
+        : 'رمزگشایی با رمز عبور کاربر و PBKDF2 انجام شد.',
     ],
   };
 }
