@@ -324,7 +324,7 @@ function AppShell() {
         <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-8">
           <div
             key={activeTool}
-            className="max-w-4xl mx-auto transition-all duration-300 ease-out animate-in fade-in slide-in-from-bottom-2"
+            className="max-w-4xl mx-auto tool-stage-enter"
           >
             {activeTool === 'base64' && <Base64Tool lang={lang} />}
             {activeTool === 'npv' && <NpvTool lang={lang} />}

@@ -255,8 +255,30 @@
   }
 }
 
+/* Smooth tool transition animation (Cyberpunk / VibeFarsi / UI-UX Pro Max) */
+.tool-stage-enter {
+  animation: toolStageIn 340ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform, filter;
+}
+
+@keyframes toolStageIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.992);
+    filter: blur(4px);
+  }
+  60% {
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .bg-grid, .bg-glow, .bg-orb, .stagger-in {
+  .bg-grid, .bg-glow, .bg-orb, .stagger-in, .tool-stage-enter {
     animation: none !important;
   }
 }
