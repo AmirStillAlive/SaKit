@@ -830,20 +830,36 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
             hint={t.uploadHintDefault}
           />
           <div className="flex items-center gap-3">
-            <Button onClick={run} disabled={files.length === 0 || busy}>
-              {busy
-                ? t.btnDecrypting
-                : files.length > 1
-                  ? t.btnDecryptMultiple(isEn ? files.length : (fa(files.length) as any))
-                  : t.btnDecrypt}
-              {!busy && (isEn ? <ArrowRight className="size-4" /> : <ArrowLeft className="size-4" />)}
+            <Button
+              onClick={run}
+              disabled={files.length === 0 || busy}
+              className={cn(
+                'relative overflow-hidden transition-all duration-200 cursor-pointer shadow-md',
+                files.length > 0 && !busy && 'hover:shadow-brand/20 active:scale-95'
+              )}
+            >
+              {busy ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  <span>{t.btnDecrypting}</span>
+                </>
+              ) : (
+                <>
+                  <span>
+                    {files.length > 1
+                      ? t.btnDecryptMultiple(isEn ? files.length : (fa(files.length) as any))
+                      : t.btnDecrypt}
+                  </span>
+                  {isEn ? <ArrowRight className="size-4" /> : <ArrowLeft className="size-4" />}
+                </>
+              )}
             </Button>
             {busy && (
-              <span className="text-xs text-muted-foreground">{t.btnLoadingTables}</span>
+              <span className="text-xs text-muted-foreground animate-pulse">{t.btnLoadingTables}</span>
             )}
           </div>
           {needsPassword && (
-            <div className="space-y-3.5 rounded-xl border border-warning/35 bg-warning/5 p-4 shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-top-3">
+            <div className="space-y-3.5 rounded-xl border border-warning/35 bg-warning/5 p-4 shadow-sm password-box-enter">
               <Alert variant="warning" title={t.passAlertTitle}>
                 {needsPassword}
               </Alert>
@@ -891,7 +907,7 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
 
         {/* نتیجه */}
         {result && (
-          <div className="mt-6 space-y-5 border-t border-border pt-5 transition-all duration-300 animate-in fade-in slide-in-from-bottom-3">
+          <div className="mt-6 space-y-5 border-t border-border pt-5 result-reveal-enter">
             {/* سربرگ نتیجه و اکشن‌ها */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -1086,7 +1102,11 @@ export const NpvTool: React.FC<NpvToolProps> = ({ lang }) => {
 
                 <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/80 bg-card">
                   {filteredEntries.map((e, i) => (
-                    <li key={i} className="space-y-3 p-4 transition-colors hover:bg-muted/10">
+                    <li
+                      key={i}
+                      style={{ animationDelay: `${Math.min(i * 40, 280)}ms` }}
+                      className="space-y-3 p-4 transition-colors hover:bg-muted/10 config-item-enter"
+                    >
                       {/* سربرگ کارت: نام، آدرس و بج‌های وایب‌فارسی */}
                       <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0 flex-1">
