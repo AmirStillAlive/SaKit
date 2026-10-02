@@ -31,5 +31,3 @@ __pycache__/
 venv/
 env/
 
-# Test temp files
-/test/fixtures/sample-gen2.npvs

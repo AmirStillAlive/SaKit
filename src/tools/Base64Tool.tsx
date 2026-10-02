@@ -130,7 +130,7 @@ export const Base64Tool: React.FC<Base64ToolProps> = ({ lang }) => {
     setInputVal('');
     setOutputVal('');
     setErrorMsg('');
-    toast({ title: t.cleared, variant: 'default' });
+    toast(t.cleared, 'info');
   };
 
   const handleSample = () => {
@@ -157,21 +157,21 @@ export const Base64Tool: React.FC<Base64ToolProps> = ({ lang }) => {
 
   const handleCopy = () => {
     if (!outputVal) {
-      toast({ title: t.empty, variant: 'warning' });
+      toast(t.empty, 'error');
       return;
     }
     navigator.clipboard.writeText(outputVal);
-    toast({ title: t.copied, variant: 'success' });
+    toast(t.copied, 'success');
   };
 
   const handleDownload = () => {
     if (!outputVal) {
-      toast({ title: t.empty, variant: 'warning' });
+      toast(t.empty, 'error');
       return;
     }
     const filename = mode === 'encode' ? 'base64-encoded.txt' : 'base64-decoded.txt';
     downloadText(filename, outputVal);
-    toast({ title: t.downloaded, variant: 'success' });
+    toast(t.downloaded, 'success');
   };
 
   return (

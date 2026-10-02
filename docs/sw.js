@@ -1,4 +1,4 @@
-// SaKit Service Worker برای کش کردن کامل و کارکرد ۱۰۰٪ آفلاین
+// SaKit Service Worker for offline asset caching and PWA support
 const CACHE_NAME = 'sakit-v1';
 
 const PRECACHE_ASSETS = [
@@ -10,28 +10,34 @@ const PRECACHE_ASSETS = [
   './gen2_tables.bin.z',
   './manifest.webmanifest',
   './fonts/vazirmatn-arabic.woff2',
-  './fonts/vazirmatn-latin.woff2'
+  './fonts/vazirmatn-latin.woff2',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS);
-    }).then(() => self.skipWaiting())
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => {
+        return cache.addAll(PRECACHE_ASSETS);
+      })
+      .then(() => self.skipWaiting()),
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    caches
+      .keys()
+      .then((keys) => {
+        return Promise.all(
+          keys.map((key) => {
+            if (key !== CACHE_NAME) {
+              return caches.delete(key);
+            }
+          }),
+        );
+      })
+      .then(() => self.clients.claim()),
   );
 });
 
@@ -40,7 +46,7 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET') return;
 
-  // برای درخواست‌های ناوبری صفحه (Navigation) - Network first با fallback به کش
+  // Navigation requests: Network-first with offline cache fallback
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -54,13 +60,17 @@ self.addEventListener('fetch', (event) => {
         .catch(async () => {
           const cached = await caches.match(request);
           if (cached) return cached;
-          return caches.match('./') || caches.match('./index.html') || caches.match('./404.html');
-        })
+          return (
+            (await caches.match('./')) ||
+            (await caches.match('./index.html')) ||
+            (await caches.match('./404.html'))
+          );
+        }),
     );
     return;
   }
 
-  // برای فایل‌های استاتیک، اسکریپت‌ها، استایل‌ها، فونت‌ها و جدول‌های gen2_tables: Cache first با پر کردن کش
+  // Static assets (scripts, styles, fonts, gen2_tables): Cache-first with background fill
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -76,6 +86,6 @@ self.addEventListener('fetch', (event) => {
         });
         return networkResponse;
       });
-    })
+    }),
   );
 });

@@ -26,18 +26,14 @@ import { EmptyState } from '../components/ui/empty-state';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useToast } from '../components/ui/toast';
 import {
-  buildProfileLink,
-  readConfigType,
-  hasTls,
-  isReality,
   type BuiltLink,
+  type Entry,
+  createEntryFromItem,
 } from '../lib/links';
 import { cn, fa, downloadText, formatNumber } from '../lib/utils';
 import { I18N, FAQ_DATA, type Lang } from '../lib/i18n';
 
-const REPO_URL = 'https://github.com/AmirStillAlive/npv-decrypt';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const REPO_URL = 'https://github.com/AmirStillAlive/SaKit';
 
 function getProtoBadgeVariant(proto: string): 'brand' | 'success' | 'warning' | 'secondary' | 'default' {
   const p = proto.toLowerCase();
@@ -48,20 +44,6 @@ function getProtoBadgeVariant(proto: string): 'brand' | 'success' | 'warning' | 
   if (p.includes('socks') || p.includes('http')) return 'secondary';
   return 'default';
 }
-
-
-
-type Entry = {
-  name: string;
-  address: string;
-  proto: string;
-  net: string;
-  tls: string;
-  links: BuiltLink[];
-  customJson: string | null;
-  json: string;
-  sourceFile?: string;
-};
 
 type FileSummary = {
   fileName: string;
@@ -80,254 +62,12 @@ type Result = {
   notes?: string[];
 };
 
-function b64encodeUnicode(s: string): string {
-  return btoa(unescape(encodeURIComponent(s)));
-}
-
-/** فایل‌نام امن برای دانلود JSON هر کانفیگ */
+/** Safe filename sanitizer for JSON export downloads */
 function safeName(s: string): string {
   return s.replace(/[\\/:*?"<>|\n\r\t]/g, '_').trim().slice(0, 80) || 'config';
 }
 
-/** ساخت لینک vless از روی outbound استاندارد v2ray */
-function buildVlessLink(ob: Record<string, any>, remark: string): BuiltLink | null {
-  try {
-    const ss = ob.streamSettings ?? {};
-    const st = ob.settings ?? {};
-    const vnext = (st.vnext ?? [])[0] ?? {};
-    const user = (vnext.users ?? [])[0] ?? {};
-    if (!user.id || !vnext.address) return null;
-    const net = ss.network ?? 'tcp';
-    const sec = ss.security ?? 'none';
-    const tls = ss.tlsSettings ?? {};
-    const q = new URLSearchParams();
-    q.set('encryption', user.encryption ?? 'none');
-
-    if (sec === 'reality') {
-      const reality = ss.realitySettings ?? {};
-      q.set('security', 'reality');
-      if (reality.serverName || tls.serverName) q.set('sni', reality.serverName || tls.serverName);
-      if (reality.fingerprint || tls.fingerprint) q.set('fp', reality.fingerprint || tls.fingerprint);
-      if (reality.publicKey) q.set('pbk', reality.publicKey);
-      if (reality.shortId) q.set('sid', reality.shortId);
-      if (reality.spiderX) q.set('spx', reality.spiderX);
-      if (user.flow) q.set('flow', user.flow);
-    } else {
-      q.set('security', sec === 'tls' ? 'tls' : 'none');
-      if (sec === 'tls') {
-        if (tls.serverName) q.set('sni', tls.serverName);
-        if (tls.fingerprint) q.set('fp', tls.fingerprint);
-        const alpn = Array.isArray(tls.alpn) ? tls.alpn.join(',') : tls.alpn;
-        if (alpn) q.set('alpn', alpn);
-        if (tls.allowInsecure) q.set('allowInsecure', '1');
-      }
-    }
-
-    if (net === 'ws') {
-      const w = ss.wsSettings ?? {};
-      q.set('type', 'ws');
-      if (w.path) q.set('path', w.path);
-      const host = (w.headers && w.headers.Host) || tls.serverName || '';
-      if (host) q.set('host', host);
-    } else if (net === 'xhttp') {
-      const x = ss.xhttpSettings ?? {};
-      q.set('type', 'xhttp');
-      if (x.path) q.set('path', x.path);
-      if (x.host) q.set('host', x.host);
-      if (x.mode) q.set('mode', x.mode);
-    } else if (net === 'tcp') {
-      q.set('type', 'tcp');
-      const t = ss.tcpSettings ?? {};
-      const header = t.header ?? {};
-      if (header.type && header.type !== 'none') q.set('headerType', header.type);
-      const host = header.request?.headers?.Host;
-      if (host) {
-        q.set('host', Array.isArray(host) ? host.join(',') : String(host));
-      }
-    } else {
-      q.set('type', net);
-    }
-
-    return {
-      kind: 'vless',
-      label: 'vless',
-      value: `vless://${user.id}@${vnext.address}:${vnext.port ?? 443}?${q.toString()}#${encodeURIComponent(remark)}`,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** ساخت لینک vmess از روی outbound استاندارد v2ray */
-function buildVmessLinkFromOutbound(ob: Record<string, any>, remark: string): BuiltLink | null {
-  try {
-    const ss = ob.streamSettings ?? {};
-    const st = ob.settings ?? {};
-    const vnext = (st.vnext ?? [])[0] ?? {};
-    const user = (vnext.users ?? [])[0] ?? {};
-    if (!user.id || !vnext.address) return null;
-    const net = ss.network ?? 'tcp';
-    const sec = ss.security ?? 'none';
-    const tls = ss.tlsSettings ?? {};
-    const ws = ss.wsSettings ?? {};
-    const tcp = ss.tcpSettings ?? {};
-    const header = tcp.header ?? {};
-    const host =
-      (ws.headers && ws.headers.Host) ||
-      (header.request?.headers?.Host
-        ? Array.isArray(header.request.headers.Host)
-          ? header.request.headers.Host.join(',')
-          : String(header.request.headers.Host)
-        : '') ||
-      tls.serverName ||
-      '';
-    const inner = {
-      v: '2',
-      ps: remark,
-      add: vnext.address,
-      port: String(vnext.port ?? 443),
-      id: user.id,
-      aid: String(user.alterId ?? 0),
-      scy: user.security || 'auto',
-      net,
-      type: header.type || 'none',
-      host,
-      path: ws.path || '',
-      tls: sec === 'tls' ? 'tls' : '',
-      sni: tls.serverName || '',
-      fp: tls.fingerprint || '',
-      alpn: Array.isArray(tls.alpn) ? tls.alpn.join(',') : tls.alpn || '',
-    };
-    return {
-      kind: 'vmess',
-      label: 'vmess',
-      value: 'vmess://' + b64encodeUnicode(JSON.stringify(inner)),
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** ساخت لینک trojan از روی outbound استاندارد v2ray */
-function buildTrojanLink(ob: Record<string, any>, remark: string): BuiltLink | null {
-  try {
-    const ss = ob.streamSettings ?? {};
-    const st = ob.settings ?? {};
-    const srv = (st.servers ?? [])[0] ?? {};
-    if (!srv.password || !srv.address) return null;
-    const net = ss.network ?? 'tcp';
-    const sec = ss.security ?? 'none';
-    const tls = ss.tlsSettings ?? {};
-    const q = new URLSearchParams();
-    if (net === 'ws') {
-      const w = ss.wsSettings ?? {};
-      q.set('type', 'ws');
-      if (w.path) q.set('path', w.path);
-      const host = (w.headers && w.headers.Host) || '';
-      if (host) q.set('host', host);
-    } else {
-      q.set('type', net);
-    }
-    q.set('security', sec === 'tls' ? 'tls' : 'none');
-    if (sec === 'tls') {
-      if (tls.serverName) q.set('sni', tls.serverName);
-      if (tls.fingerprint) q.set('fp', tls.fingerprint);
-      const alpn = Array.isArray(tls.alpn) ? tls.alpn.join(',') : tls.alpn;
-      if (alpn) q.set('alpn', alpn);
-      if (tls.allowInsecure) q.set('allowInsecure', '1');
-    }
-    return {
-      kind: 'trojan',
-      label: 'trojan',
-      value: `trojan://${encodeURIComponent(String(srv.password))}@${srv.address}:${srv.port ?? 443}?${q.toString()}#${encodeURIComponent(remark)}`,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** ساخت لینک http proxy از روی outbound استاندارد v2ray */
-function buildHttpLink(ob: Record<string, any>, remark: string): BuiltLink | null {
-  try {
-    const st = ob.settings ?? {};
-    const srv = (st.servers ?? [])[0] ?? {};
-    const u = (srv.users ?? [])[0] ?? {};
-    const addr = srv.address || ob.address;
-    const port = srv.port || ob.port || 1080;
-    if (!addr) return null;
-    const auth = u.user ? `${encodeURIComponent(u.user)}:${encodeURIComponent(u.pass ?? '')}@` : '';
-    return {
-      kind: 'http',
-      label: 'http',
-      value: `http://${auth}${addr}:${port}#${encodeURIComponent(remark)}`,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** ساخت لینک socks5 proxy از روی outbound استاندارد v2ray */
-function buildSocksLink(ob: Record<string, any>, remark: string): BuiltLink | null {
-  try {
-    const st = ob.settings ?? {};
-    const srv = (st.servers ?? [])[0] ?? {};
-    const u = (srv.users ?? [])[0] ?? {};
-    const addr = srv.address || ob.address;
-    const port = srv.port || ob.port || 1080;
-    if (!addr) return null;
-    const auth = u.user ? `${encodeURIComponent(u.user)}:${encodeURIComponent(u.pass ?? '')}@` : '';
-    return {
-      kind: 'socks',
-      label: 'socks5',
-      value: `socks5://${auth}${addr}:${port}#${encodeURIComponent(remark)}`,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** ساخت لینک shadowsocks از روی outbound استاندارد v2ray */
-function buildShadowsocksLink(ob: Record<string, any>, remark: string): BuiltLink | null {
-  try {
-    const st = ob.settings ?? {};
-    const srv = (st.servers ?? [])[0] ?? {};
-    if (!srv.address || !srv.password || !srv.method) return null;
-    const creds = btoa(`${srv.method}:${srv.password}`);
-    return {
-      kind: 'shadowsocks',
-      label: 'ss',
-      value: `ss://${creds}@${srv.address}:${srv.port ?? 8388}#${encodeURIComponent(remark)}`,
-    };
-  } catch {
-    return null;
-  }
-}
-
-/** ساخت لینک vmess برای پروفایل‌های ساده بدون v2rayJson */
-function buildVmessLink(item: Record<string, any>): BuiltLink | null {
-  const p = (item.v2rayProfile ?? {}) as Record<string, any>;
-  if (!p.password || !p.server) return null;
-  const inner = {
-    v: '2',
-    ps: String(item.name ?? p.remarks ?? '').trim(),
-    add: p.server,
-    port: String(p.serverPort),
-    id: p.password,
-    aid: '0',
-    scy: p.method && String(p.method).length < 32 ? p.method : 'auto',
-    net: p.network || 'tcp',
-    type: p.headerType || 'none',
-    host: p.host || '',
-    path: p.path || '',
-    tls: p.security === 'tls' ? 'tls' : '',
-    sni: p.sni || '',
-    fp: p.fingerPrint || '',
-    alpn: p.alpn || '',
-  };
-  return { kind: 'vmess', label: 'vmess', value: 'vmess://' + b64encodeUnicode(JSON.stringify(inner)) };
-}
-
-/** نوع فایل را از روی محتوا حدس می‌زند؛ متن به base64 تبدیل می‌شود. */
+/** Detects file type from the leading bytes of textual content. */
 function detectFormat(text: string): 'npvs' | 'npvt' | 'unknown' {
   const head = text.trimStart().slice(0, 16);
   if (head.startsWith('NPVS')) return 'npvs';
@@ -336,10 +76,9 @@ function detectFormat(text: string): 'npvs' | 'npvt' | 'unknown' {
 }
 
 /**
- * نسخهٔ NPVS را از روی بایت پنجم فایل می‌خواند.
- * نسخهٔ ۱ پاکت با سرآیند JSON است و نسخهٔ ۵ پاکت فشردهٔ gen2؛ هر دو پشتیبانی
- * می‌شوند. نسخه‌های دیگر (۲ تا ۴ و بالاتر از ۵) چیدمان ناشناخته دارند.
- * @returns شماره نسخه، یا null اگر فایل NPVS نبود
+ * Reads the NPVS version byte (5th byte).
+ * Version 1 uses JSON payload headers; Version 5 uses gen2 compressed tables.
+ * @returns Version number, or null if not a valid NPVS magic header.
  */
 async function readNpvsVersion(file: File): Promise<number | null> {
   const buf = await file.slice(0, 5).arrayBuffer();
@@ -348,87 +87,6 @@ async function readNpvsVersion(file: File): Promise<number | null> {
   return isNpvs ? head[4] : null;
 }
 
-function createEntryFromItem(item: Record<string, any>): Entry | null {
-  if (!item || typeof item !== 'object') return null;
-  // اگر آیتم فاقد تنظیمات سرور یا پروفایل باشد (مثل lockConfig)، آن را نادیده می‌گیریم
-  if (!item.v2rayProfile && !item.server && !item.address) return null;
-
-  const profile = (item.v2rayProfile ?? {}) as Record<string, any>;
-  const name = String(item.name ?? profile.remarks ?? '').trim() || 'بدون نام';
-  const address = String(
-    profile.server ? `${profile.server}:${profile.serverPort}` : (item.address ?? 'نامشخص'),
-  );
-  let proto = 'نامشخص';
-  let net = String(profile.network ?? 'نامشخص');
-  let tls = String(profile.security ?? 'نامشخص');
-  let links: BuiltLink[] = [];
-  let customJson: string | null = null;
-
-  if (profile.v2rayJson) {
-    try {
-      const full =
-        typeof profile.v2rayJson === 'string'
-          ? JSON.parse(profile.v2rayJson)
-          : profile.v2rayJson;
-      const outs = (full?.outbounds ?? []) as Record<string, any>[];
-      const proxy = outs.find((o) => o.tag === 'proxy') ?? outs[0];
-      if (proxy) {
-        proto = String(proxy.protocol ?? 'نامشخص');
-        const ss = proxy.streamSettings ?? {};
-        if (ss.network) net = String(ss.network);
-        if (ss.security) tls = String(ss.security);
-
-        const b =
-          proxy.protocol === 'vless'
-            ? buildVlessLink(proxy, name)
-            : proxy.protocol === 'vmess'
-              ? buildVmessLinkFromOutbound(proxy, name)
-              : proxy.protocol === 'trojan'
-                ? buildTrojanLink(proxy, name)
-                : proxy.protocol === 'http'
-                  ? buildHttpLink(proxy, name)
-                  : proxy.protocol === 'socks'
-                    ? buildSocksLink(proxy, name)
-                    : proxy.protocol === 'shadowsocks'
-                      ? buildShadowsocksLink(proxy, name)
-                      : null;
-        if (b) links.push(b);
-      }
-      customJson = JSON.stringify(full, null, 2);
-    } catch {
-      /* اگر v2rayJson قابل تفسیر نبود، از روی پروفایل ادامه می‌دهیم */
-    }
-  }
-
-  if (!links.length) {
-    const b = buildProfileLink(item);
-    if (b) {
-      links.push(b);
-      proto = b.kind;
-      if (proto === 'vless') {
-        if (profile.security === 'reality' || profile.publicKey) {
-          tls = 'reality';
-        } else if (profile.security) {
-          tls = String(profile.security);
-        }
-      }
-      if (proto === 'shadowsocks' && (net === 'نامشخص' || !profile.network)) {
-        net = 'tcp';
-      }
-    }
-  }
-
-  return {
-    name,
-    address,
-    proto,
-    net,
-    tls,
-    links,
-    customJson,
-    json: JSON.stringify(item, null, 2),
-  };
-}
 
 /** فایل NPVS را باز می‌کند و به همان ساختار خروجی .npvt تبدیل می‌کند. */
 async function decryptNpvsFile(file: File, password: string): Promise<{ result: Result; npv: any }> {
@@ -481,7 +139,7 @@ async function decryptNpvsFile(file: File, password: string): Promise<{ result: 
     if (k !== 'DEK/CEK' && v) keyLines.push(`# ${k}: ${v}`);
   }
   const header = [
-    `# ${file.name} : خروجی npv-decrypt`,
+    `# ${file.name} : خروجی SaKit`,
     `# configId: ${res.meta.configId ?? 'نامشخص'}`,
     ...res.notes.map((n: string) => `# ${n}`),
     ...keyLines,
@@ -569,7 +227,7 @@ async function decryptSingleFile(
 
 /** متن فایل «همه لینک‌ها»: هر خط یک لینک */
 function allLinksText(result: Result): string {
-  const lines = [`# ${result.fileName} : خروجی npv-decrypt`, ''];
+  const lines = [`# ${result.fileName} : خروجی SaKit`, ''];
   if (result.fileCount > 1) {
     lines.push(`# مجموعاً ${fa(result.fileCount)} فایل و ${fa(result.entries.length)} کانفیگ:`);
     for (const f of result.fileSummaries) {

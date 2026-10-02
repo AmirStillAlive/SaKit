@@ -28,6 +28,25 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
+    <!-- Single Page Apps for GitHub Pages redirect restoration -->
+    <script>
+      (function (l) {
+        if (l.search[1] === '/') {
+          var decoded = l.search
+            .slice(1)
+            .split('&')
+            .map(function (s) {
+              return s.replace(/~and~/g, '&');
+            })
+            .join('?');
+          window.history.replaceState(
+            null,
+            null,
+            l.pathname.slice(0, -1) + decoded + l.hash
+          );
+        }
+      })(window.location);
+    </script>
     <title>SaKit — جعبه‌ابزار داده و کانفیگ</title>
   </head>
   <body class="bg-background text-foreground min-h-screen selection:bg-brand/20 selection:text-brand font-vazirmatn antialiased">

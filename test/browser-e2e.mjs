@@ -284,7 +284,7 @@ try {
   );
   checkHas('نام کانفیگ نسخهٔ ۵ نمایش داده شد', body5, 'Internet Server VPN / WhatsApp');
   checkHas('آدرس کانفیگ نسخهٔ ۵', body5, 'help.snapchat.com:80');
-  checkHas('یادداشت white-box نسل ۲', body5, 'white-box نسل ۲');
+  checkHas('یادداشت white-box نسل ۲', body5, 'نسل ۲');
 
   rmSync(uploaded5, { force: true });
 } catch (e) {

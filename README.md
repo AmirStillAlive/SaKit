@@ -108,7 +108,7 @@ npm test
 npm run test:e2e
 ```
 
-- **`test/links.test.mjs`**: 37 assertions testing proxy link builder correctness across VLESS, VMess, Trojan, and Shadowsocks.
+- **`test/links.test.mjs`**: 63 assertions testing proxy link builder correctness across VLESS, VMess, Trojan, SOCKS, and Shadowsocks, including IPv6 literal bracket formatting and v2ray outbounds.
 - **`test/npvs-gen2.mjs`**: Verifies generation 2 A16 vectors, KDK key derivation, and Python/JS parity.
 - **`test/npvs-parity.mjs`**: Verifies custodian KDF vectors, ChaCha20-Poly1305 cipher parity, and envelope unpackers.
 - **`test/browser-e2e.mjs`**: Spawns a headless Chrome browser, exercises UI interactions, file drops, and DOM rendering.

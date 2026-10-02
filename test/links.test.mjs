@@ -14,6 +14,10 @@ import {
   readConfigType,
   hasTls,
   isReality,
+  formatHostPort,
+  unbracketHost,
+  buildLinkFromOutbound,
+  createEntryFromItem,
 } from '../src/lib/links.ts';
 
 let pass = 0;
@@ -270,6 +274,202 @@ console.log('user VLESS config (🚀🇺🇸 آمریکا)');
   check('headerType is http', link && link.value.includes('headerType=http'));
   check('type is tcp', link && link.value.includes('type=tcp'));
   check('host is preserved', link && link.value.includes('cf-pages.coingecko.com'));
+}
+
+/* ------------------------------------------------------------------ *
+ * Case 9: IPv6 bracket formatting (RFC 3986)
+ * ------------------------------------------------------------------ */
+console.log('IPv6 bracket formatting (RFC 3986)');
+{
+  check('formats IPv4 as host:port', formatHostPort('192.0.2.1', 8080) === '192.0.2.1:8080');
+  check('formats domain as host:port', formatHostPort('example.com', 443) === 'example.com:443');
+  check('brackets IPv6 address', formatHostPort('2001:db8::1', 443) === '[2001:db8::1]:443');
+  check('does not double bracket already-bracketed IPv6', formatHostPort('[2001:db8::1]', 443) === '[2001:db8::1]:443');
+  check('unbracketHost strips brackets', unbracketHost('[2001:db8::1]') === '2001:db8::1');
+  check('unbracketHost leaves unbracketed host alone', unbracketHost('2001:db8::1') === '2001:db8::1');
+
+  // Verify profile link with IPv6
+  const itemIpv6 = {
+    name: 'ipv6-vless',
+    v2rayProfile: {
+      configType: '5',
+      server: '2001:db8::1',
+      serverPort: 443,
+      password: '11111111-2222-3333-4444-555555555555',
+      security: 'tls',
+      network: 'tcp',
+    },
+  };
+  const link = buildProfileLink(itemIpv6);
+  check('IPv6 profile link has bracketed host', link && link.value.includes('@[2001:db8::1]:443'));
+}
+
+/* ------------------------------------------------------------------ *
+ * Case 10: v2ray outbound link builders
+ * ------------------------------------------------------------------ */
+console.log('v2ray outbound link builders');
+{
+  // 1. VLESS outbound with reality
+  const vlessOb = {
+    protocol: 'vless',
+    settings: {
+      vnext: [
+        {
+          address: '203.0.113.10',
+          port: 443,
+          users: [
+            {
+              id: 'a1b2c3d4-e5f6-4a1b-8c2d-3e4f5a6b7c8d',
+              flow: 'xtls-rprx-vision',
+              encryption: 'none',
+            },
+          ],
+        },
+      ],
+    },
+    streamSettings: {
+      network: 'tcp',
+      security: 'reality',
+      realitySettings: {
+        serverName: 'gateway.example.com',
+        publicKey: 'pubkey123',
+        shortId: 'short123',
+        fingerprint: 'chrome',
+      },
+    },
+  };
+  const vlessLink = buildLinkFromOutbound(vlessOb, 'outbound-reality');
+  check('outbound vless produces link', vlessLink !== null && vlessLink.kind === 'vless');
+  check('outbound vless contains security=reality', vlessLink && vlessLink.value.includes('security=reality'));
+  check('outbound vless contains pbk=pubkey123', vlessLink && vlessLink.value.includes('pbk=pubkey123'));
+  check('outbound vless contains flow=xtls-rprx-vision', vlessLink && vlessLink.value.includes('flow=xtls-rprx-vision'));
+
+  // 2. VMess outbound with ws
+  const vmessOb = {
+    protocol: 'vmess',
+    settings: {
+      vnext: [
+        {
+          address: '2001:db8::8',
+          port: 8443,
+          users: [
+            {
+              id: '12345678-1234-1234-1234-123456789abc',
+              alterId: 0,
+              security: 'auto',
+            },
+          ],
+        },
+      ],
+    },
+    streamSettings: {
+      network: 'ws',
+      security: 'tls',
+      tlsSettings: {
+        serverName: 'cdn.example.org',
+      },
+      wsSettings: {
+        path: '/websocket',
+        headers: { Host: 'cdn.example.org' },
+      },
+    },
+  };
+  const vmessLink = buildLinkFromOutbound(vmessOb, 'outbound-vmess');
+  check('outbound vmess produces link', vmessLink !== null && vmessLink.kind === 'vmess');
+  if (vmessLink) {
+    const json = JSON.parse(decodeB64Url(vmessLink.value.slice('vmess://'.length)));
+    check('vmess add is unbracketed IPv6', json.add === '2001:db8::8');
+    check('vmess port is 8443', json.port === '8443');
+    check('vmess path is /websocket', json.path === '/websocket');
+    check('vmess net is ws', json.net === 'ws');
+  }
+
+  // 3. Trojan outbound
+  const trojanOb = {
+    protocol: 'trojan',
+    settings: {
+      servers: [
+        {
+          address: '203.0.113.25',
+          port: 443,
+          password: 'secret-password-123',
+        },
+      ],
+    },
+    streamSettings: {
+      network: 'ws',
+      security: 'tls',
+      tlsSettings: {
+        serverName: 'trojan.example.com',
+      },
+      wsSettings: {
+        path: '/trpath',
+      },
+    },
+  };
+  const trojanLink = buildLinkFromOutbound(trojanOb, 'outbound-trojan');
+  check('outbound trojan produces link', trojanLink !== null && trojanLink.kind === 'trojan');
+  check('trojan URI contains password', trojanLink && trojanLink.value.includes('secret-password-123@'));
+  check('trojan URI contains path', trojanLink && trojanLink.value.includes('path=%2Ftrpath'));
+
+  // 4. Shadowsocks outbound
+  const ssOb = {
+    protocol: 'shadowsocks',
+    settings: {
+      servers: [
+        {
+          address: '203.0.113.30',
+          port: 8388,
+          method: 'aes-128-gcm',
+          password: 'mypassword',
+        },
+      ],
+    },
+  };
+  const ssLink = buildLinkFromOutbound(ssOb, 'outbound-ss');
+  check('outbound shadowsocks produces link', ssLink !== null && ssLink.kind === 'shadowsocks');
+  check('shadowsocks URI starts with ss://', ssLink && ssLink.value.startsWith('ss://'));
+}
+
+/* ------------------------------------------------------------------ *
+ * Case 11: createEntryFromItem
+ * ------------------------------------------------------------------ */
+console.log('createEntryFromItem');
+{
+  const itemWithV2rayJson = {
+    name: 'Proxy Node 1',
+    v2rayProfile: {
+      remarks: 'Fallback Name',
+      v2rayJson: JSON.stringify({
+        outbounds: [
+          {
+            tag: 'proxy',
+            protocol: 'vless',
+            settings: {
+              vnext: [
+                {
+                  address: '198.51.100.1',
+                  port: 443,
+                  users: [{ id: '99999999-8888-7777-6666-555555555555' }],
+                },
+              ],
+            },
+            streamSettings: {
+              network: 'tcp',
+              security: 'none',
+            },
+          },
+        ],
+      }),
+    },
+  };
+
+  const entry = createEntryFromItem(itemWithV2rayJson, 'test.npvs');
+  check('creates entry from v2rayJson', entry !== null);
+  check('entry name is Proxy Node 1', entry && entry.name === 'Proxy Node 1');
+  check('entry proto is vless', entry && entry.proto === 'vless');
+  check('entry links length is 1', entry && entry.links.length === 1);
+  check('entry sourceFile is test.npvs', entry && entry.sourceFile === 'test.npvs');
 }
 
 console.log('');

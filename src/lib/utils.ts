@@ -1,33 +1,36 @@
-/** ابزارهای کمکی فارسی: cn، اعداد فارسی و حجم فایل. */
+/**
+ * General helper utilities: class name merging, Persian digit formatting,
+ * file size formatting, and client-side file downloads.
+ */
 
 export function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
 }
 
-/** عدد لاتین به ارقام فارسی (برای لایه نمایش) */
+/** Converts ASCII digits to Persian digits for localized presentation */
 export function fa(n: number | string): string {
   return String(n).replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]);
 }
 
-/** جداکنندهٔ هزارگان فارسی + ارقام فارسی */
+/** Formats a number with thousands separators and Persian digits */
 export function faNumber(n: number): string {
   return fa(n.toLocaleString('en-US').replace(/,/g, '٬'));
 }
 
-/** حجم فایل با واحد فارسی: «۱۲ کیلوبایت» */
+/** Formats byte sizes with Persian units */
 export function faFileSize(bytes: number): string {
   if (bytes < 1024) return `${fa(bytes)} بایت`;
   if (bytes < 1024 * 1024) return `${fa((bytes / 1024).toFixed(1))} کیلوبایت`;
   return `${fa((bytes / (1024 * 1024)).toFixed(1))} مگابایت`;
 }
 
-/** قالب‌بندی عدد بسته به زبان */
+/** Formats number according to selected language */
 export function formatNumber(n: number | string, lang: 'fa' | 'en' = 'fa'): string {
   if (lang === 'fa') return fa(n);
   return String(n);
 }
 
-/** حجم فایل سازگار با دوزبانه */
+/** Formats file size according to selected language */
 export function formatFileSize(bytes: number, lang: 'fa' | 'en' = 'fa'): string {
   if (lang === 'fa') return faFileSize(bytes);
   if (bytes < 1024) return `${bytes} B`;
@@ -35,7 +38,7 @@ export function formatFileSize(bytes: number, lang: 'fa' | 'en' = 'fa'): string 
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** دانلود متن به‌صورت فایل؛ مقاوم در برابر popup-blockerها. */
+/** Triggers a client-side file download from text content */
 export function downloadText(filename: string, content: string): void {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);

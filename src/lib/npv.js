@@ -1,11 +1,11 @@
 /**
- * npv.js: پورت جاوااسکریپت دیکریپت کانفیگ‌های NPV Tunnel (.npvt)
+ * NPV Tunnel configuration decryption (.npvt format).
  *
- * فرمت:  NPVT1\n<base64>,<base64>,...
- * رمز:   AES-128-CTR با کلید white-box (جدول‌ها از سورس Go پروژهٔ
- *         Pantegnos (https://github.com/FrontierTM/Pantegnos، پروانه MIT)
+ * Format:  NPVT1\n<base64>,<base64>,...
+ * Cipher:  AES-128-CTR with white-box key tables (derived from the open-source
+ *          Pantegnos project, MIT license: https://github.com/FrontierTM/Pantegnos).
  *
- * هیچ‌چیز به سرور نمی‌رود؛ همه‌چیز داخل مرورگر انجام می‌شود.
+ * Execution is 100% client-side within the browser; zero external network requests.
  */
 
 export const SHIFT_ORDER = [0, 5, 10, 15, 4, 9, 14, 3, 8, 13, 2, 7, 12, 1, 6, 11];
@@ -13,7 +13,7 @@ export const SHIFT_ORDER = [0, 5, 10, 15, 4, 9, 14, 3, 8, 13, 2, 7, 12, 1, 6, 11
 /** @type {{TY: Uint32Array, MBL: Uint32Array, XT: Uint8Array, TBL: Uint8Array}|null} */
 let TABLES = null;
 
-/** جدول‌ها را از آبجکت JSON (npv_tables.json) می‌سازد. */
+/** Initializes white-box tables from parsed JSON (npv_tables.json). */
 export function setTables(json) {
   TABLES = {
     TY: Uint32Array.from(json.tyBoxes.data),
@@ -28,7 +28,7 @@ export function hasTables() {
   return TABLES !== null;
 }
 
-/** هستهٔ رمز: یک بلاک ۱۶ بایتی را با جدول‌های white-box تبدیل می‌کند. */
+/** Core transformation: transforms one 16-byte block using white-box lookup tables. */
 export function core(block) {
   const { TY, MBL, XT, TBL } = TABLES;
   let buf = new Uint8Array(16);
@@ -43,7 +43,7 @@ export function core(block) {
     const iC3 = TY[i15 * 256 + buf[i15]];
     const iC4 = TY[i16 * 256 + buf[i16]];
 
-    // --- تبدیل اول: tyBoxes → mix با xorTable ---
+    // First round transformation: tyBoxes mixed with xorTable
     for (let i17 = 0; i17 < 4; i17++) {
       const i18 = i11 * 24 + i17 * 6;
       const i19 = i17 * 8;
@@ -64,7 +64,7 @@ export function core(block) {
       buf[i13 + i17] = lo | (hi << 4);
     }
 
-    // --- تبدیل دوم: mbl → mix با xorTable ---
+    // Second round transformation: mbl mixed with xorTable
     const iC5 = MBL[i13 * 256 + buf[i13]];
     const iC6 = MBL[i14 * 256 + buf[i14]];
     const iC7 = MBL[i15 * 256 + buf[i15]];
@@ -97,7 +97,7 @@ export function core(block) {
   return out;
 }
 
-/** AES-CTR با هسته white-box؛ شمارنده big-endian روی ۱۶ بایت. */
+/** AES-CTR with white-box core; big-endian 16-byte counter block. */
 export function ctr(nonce, data) {
   const counter = Uint8Array.from(nonce);
   const out = new Uint8Array(data.length);
@@ -114,7 +114,7 @@ export function ctr(nonce, data) {
   return out;
 }
 
-/** base64 → bytes (با تحمل whitespace و بدون padding). */
+/** Decodes Base64 to byte array, tolerating whitespace and omitted padding. */
 export function b64decode(s) {
   const clean = s.replace(/\s+/g, '');
   if (!clean) return new Uint8Array(0);
@@ -125,19 +125,19 @@ export function b64decode(s) {
   return out;
 }
 
-/** یک بلاک base64-شده را دیکریپت می‌کند (nonce ۱۶ بایت ابتدای بلاک). */
+/** Decrypts a Base64-encoded block (16-byte nonce prepended). */
 export function decryptBlob(data) {
   if (data.length < 32) return new Uint8Array(0);
   return ctr(data.subarray(0, 16), data.subarray(16));
 }
 
-/** متن UTF-8 → رشته */
+/** Decodes UTF-8 bytes to string. */
 export function utf8decode(bytes) {
   return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
 }
 
 /**
- * نوع فایل را از روی متن حدس می‌زند: npvt، npv یا unknown.
+ * Detects format from textual content: npvt, npv, or unknown.
  * @param {string} text
  */
 export function detectFormat(text) {
@@ -150,7 +150,7 @@ export function detectFormat(text) {
 }
 
 /**
- * متن کامل فایل .npvt را می‌گیرد و آرایه‌ای از plaintext برمی‌گرداند.
+ * Decrypts all tokens in .npvt file text into an array of plaintext Uint8Array payloads.
  * @param {string} text
  * @returns {Uint8Array[]}
  */
@@ -172,7 +172,7 @@ export function decryptFileText(text) {
   return out;
 }
 
-/** تلاش برای JSON خوانا؛ در غیر این صورت همان متن خام. */
+/** Formats byte array as pretty-printed JSON if valid, else returns raw UTF-8 string. */
 export function pretty(bytes) {
   const raw = utf8decode(bytes);
   try {
@@ -183,11 +183,8 @@ export function pretty(bytes) {
 }
 
 /**
- * Build an import link from one decrypted config.
- *
- * The .npvt path yields the same v2rayProfile shape as NPVS, so the same
- * configType rule applies: configType=3 is shadowsocks and must not become
- * vmess. reality is real encryption, so the tls field must not stay empty.
+ * Builds an import link from one decrypted config.
+ * For full multi-protocol support, prefer src/lib/links.ts.
  */
 export function toVmessLink(obj) {
   const p = obj && obj.v2rayProfile;
@@ -199,7 +196,6 @@ export function toVmessLink(obj) {
   const id = String(p.password || '');
   const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
 
-  // shadowsocks wants an ss:// link, not vmess
   if (String(p.configType) === '3') {
     const method = String(p.method || '').trim();
     if (!method && !id) return null;
@@ -207,7 +203,6 @@ export function toVmessLink(obj) {
     return `ss://${b64(userInfo)}@${p.server}:${p.serverPort}#${encodeURIComponent(remark)}`;
   }
 
-  // without a UUID a vmess link is meaningless
   if (!UUID_RE.test(id)) return null;
 
   const inner = {
@@ -222,7 +217,6 @@ export function toVmessLink(obj) {
     type: p.headerType || 'none',
     host: p.host || '',
     path: p.path || '',
-    // reality is itself TLS; leaving this empty claims "no encryption"
     tls: isTls ? 'tls' : '',
     sni: p.sni || '',
     fp: p.fingerPrint || '',
@@ -231,7 +225,7 @@ export function toVmessLink(obj) {
   return 'vmess://' + b64(JSON.stringify(inner));
 }
 
-/** دانلود متن به‌صورت فایل؛ مقاوم در برابر popup-blockerها. */
+/** Triggers a browser download for text content. */
 export function downloadText(filename, content) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -241,7 +235,6 @@ export function downloadText(filename, content) {
   a.rel = 'noopener';
   a.style.display = 'none';
   document.body.appendChild(a);
-  // click مستقیم + fallback با MouseEvent برای مرورگرهای سخت‌گیر
   a.click();
   a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
   a.remove();

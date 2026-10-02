@@ -68,14 +68,51 @@ export default function App() {
   );
 }
 
+/**
+ * Parses the current route from the window location.
+ * Supports path routing (/sakit/npv, /npv), query-redirect routing (?/npv),
+ * and hash routing fallback (#/npv).
+ */
 function parseCurrentRoute(): ToolId {
   const path = window.location.pathname.toLowerCase();
+  const search = window.location.search.toLowerCase();
   const hash = window.location.hash.toLowerCase();
 
-  // پشتیبانی همزمان از Path Routing و Hash Routing به عنوان Fallback
-  if (path.includes('/npv') || hash.includes('npv')) return 'npv';
-  if (path.includes('/base64') || hash.includes('base64')) return 'base64';
+  if (
+    path.endsWith('/npv') ||
+    path.includes('/npv/') ||
+    search.includes('/npv') ||
+    hash.includes('npv')
+  ) {
+    return 'npv';
+  }
+  if (
+    path.endsWith('/base64') ||
+    path.includes('/base64/') ||
+    search.includes('/base64') ||
+    hash.includes('base64')
+  ) {
+    return 'base64';
+  }
   return 'base64';
+}
+
+/**
+ * Returns the base path prefix for client-side routing.
+ * When hosted on GitHub Pages under a repository subfolder (e.g. /SaKit/),
+ * it returns that subpath so history navigation preserves it across route changes.
+ */
+export function getAppBase(): string {
+  const pathname = window.location.pathname;
+  const match = pathname.match(/^(\/[^/]+)/);
+  if (
+    window.location.hostname.endsWith('github.io') &&
+    match &&
+    match[1].toLowerCase() === '/sakit'
+  ) {
+    return match[1];
+  }
+  return '';
 }
 
 function AppShell() {
@@ -100,7 +137,7 @@ function AppShell() {
     document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr';
   }, [lang]);
 
-  // مدیریت URL در تغییر ابزار و گوش دادن به popstate
+  // Synchronize route state with browser history (popstate)
   useEffect(() => {
     const handlePopState = () => {
       setActiveTool(parseCurrentRoute());
@@ -113,8 +150,7 @@ function AppShell() {
     setActiveTool(toolId);
     setMobileMenuOpen(false);
 
-    // تشکیل آدرس تمیز SPA
-    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+    const base = getAppBase();
     const targetUrl = `${base}/${toolId}`;
     try {
       window.history.pushState(null, '', targetUrl);
